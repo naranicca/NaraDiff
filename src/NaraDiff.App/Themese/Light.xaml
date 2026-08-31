@@ -1,0 +1,25 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="Surface" Color="#FFF3F4F6"/>
+  <SolidColorBrush x:Key="SurfaceAlt" Color="#FFFFFFFF"/>
+  <SolidColorBrush x:Key="SurfaceRaised" Color="#FFFFFFFF"/>
+  <SolidColorBrush x:Key="SurfaceHover" Color="#FFEAECEF"/>
+  <SolidColorBrush x:Key="Border" Color="#FFE1E4E8"/>
+  <SolidColorBrush x:Key="BorderStrong" Color="#FFC4CAD1"/>
+  <SolidColorBrush x:Key="TextPrimary" Color="#FF1C1E21"/>
+  <SolidColorBrush x:Key="TextSecondary" Color="#FF636A73"/>
+  <SolidColorBrush x:Key="TextDisabled" Color="#FFA3A9B0"/>
+  <SolidColorBrush x:Key="Accent" Color="#FF0A84FF"/>
+  <SolidColorBrush x:Key="AccentHover" Color="#FF0077E6"/>
+  <SolidColorBrush x:Key="AccentText" Color="#FFFFFFFF"/>
+  <SolidColorBrush x:Key="EditorBackground" Color="#FFFFFFFF"/>
+  <SolidColorBrush x:Key="EditorForeground" Color="#FF1C1E21"/>
+  <SolidColorBrush x:Key="EditorLineNumber" Color="#FF8A9199"/>
+  <SolidColorBrush x:Key="EditorCurrentLine" Color="#0F000000"/>
+  <SolidColorBrush x:Key="EditorSelection" Color="#380A84FF"/>
+  <SolidColorBrush x:Key="EditorSearchMatch" Color="#66E3B341"/>
+  <SolidColorBrush x:Key="GutterBackground" Color="#FFECEEF1"/>
+  <SolidColorBrush x:Key="RulerBackground" Color="#FFECEEF1"/>
+  <SolidColorBrush x:Key="RulerViewport" Color="#18000000"/>
+  <SolidColorBrush x:Key="RulerViewportBorder" Color="#55000000"/>
+</ResourceDictionary>
