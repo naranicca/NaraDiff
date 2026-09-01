@@ -31,7 +31,7 @@ public sealed class DirectorySyncExecutor
     public Task<SyncExecutionReport> ExecuteAsync(SyncPlan plan, bool allowDeletions, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        return Task.Run(() => Execute(plan, allowDeletions, progress, cancellationtoken), cancellationToken);
+        return Task.Run(() => Execute(plan, allowDeletions, progress, cancellationToken), cancellationToken);
     }
 
     private static SyncExecutionReport Execute(SyncPlan plan, bool allowDeletions, IProgress<string>? progress, CancellationToken cancellationToken)

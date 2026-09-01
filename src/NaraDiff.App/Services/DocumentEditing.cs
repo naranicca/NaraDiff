@@ -1,4 +1,4 @@
-using System. Text;
+using System.Text;
 using ICSharpCode.AvalonEdit.Document;
 using NaraDiff.Core.Text;
 
@@ -30,7 +30,7 @@ public static class DocumentEditing
         var appendAfterLastLine = count <= 0 && startLine >= lineCount;
         if (count <= 0)
         {
-        startOffset = appendAfterLastLine ? document.TextLength : document.GetLineByNumber(startLine + 1).Offset;
+            startOffset = appendAfterLastLine ? document.TextLength : document.GetLineByNumber(startLine + 1).Offset;
         }
         else
         {
@@ -49,7 +49,7 @@ public static class DocumentEditing
             }
         }
         var text = BuildText(source, eol);
-        if (count > 0 && replacedDelimiter && text.Length > 0 && ! EndsWithBreak(text)) text += eol;
+        if (count > 0 && replacedDelimiter && text.Length > 0 && !EndsWithBreak(text)) text += eol;
         // A source range that only holds the empty last line still means "the target ends with a
         // terminator", so the emptiness of the built text must not skip this step.
         if (count <= 0 && source.Count > 0)
@@ -68,6 +68,7 @@ public static class DocumentEditing
         }
         document.Replace(startOffset, length, text);
     }
+
     /// <summary>Joins lines, filling in the fallback terminator where a source line had none .</summary>
     public static string BuildText(IReadOnlyList<TextLine> source, string eol)
     {

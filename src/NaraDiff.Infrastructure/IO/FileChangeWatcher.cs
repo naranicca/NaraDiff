@@ -8,7 +8,7 @@ public sealed class FileChangeWatcher : IDisposable
 {
     private readonly Dictionary<string, FileSystemWatcher> _watchers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _lastSignal = new(StringComparer.OrdinalIgnoreCase);
-    private readonly object gate = new();
+    private readonly object _gate = new();
     private readonly TimeSpan _coalesce = TimeSpan.FromMilliseconds(400);
     private bool _disposed;
 
@@ -22,16 +22,16 @@ public sealed class FileChangeWatcher : IDisposable
     {
         ArgumentNullException.ThrowIfNull(paths);
         var wanted = paths
-        .Where(path => !string.IsNullOrWhiteSpace(path))
-        .Select(path => Path.GetFullPath(path!))
-        .Where(File.Exists)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => Path.GetFullPath(path!))
+            .Where(File.Exists)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         lock (_gate)
         {
             foreach (var existing in _watchers.Keys.Where(key => !wanted.Contains(key)).ToList())
             {
-                watchers[existing].Dispose();
-                watchers.Remove(existing);
+                _watchers[existing].Dispose();
+                _watchers.Remove(existing);
             }
             foreach (var path in wanted)
             {
@@ -49,7 +49,7 @@ public sealed class FileChangeWatcher : IDisposable
                     watcher.Changed += OnChanged;
                     watcher.Created += OnChanged;
                     watcher.Renamed += OnChanged;
-                    watchers [path] = watcher;
+                    _watchers[path] = watcher;
                 }
                 catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
                 {
@@ -73,9 +73,9 @@ public sealed class FileChangeWatcher : IDisposable
 
     public void Dispose()
     {
-        if (disposed) return;
+        if (_disposed) return;
         _disposed = true;
-        lock (gate)
+        lock (_gate)
         {
             foreach (var watcher in _watchers.Values) watcher.Dispose();
             _watchers.Clear();

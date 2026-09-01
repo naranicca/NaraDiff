@@ -21,9 +21,9 @@ public sealed class TextFileService : ITextFileService
             var info = new FileInfo(path);
             if (!info.Exists) return FileLoadResult.Failure(info.FullName, "The file does not exist.");
             if (info.Length > MaxTextFileBytes)
-            return FileLoadResult.Failure(info.FullName, $"The file is larger than {MaxTextFileBytes / (1024 * 1024)} MB and cannot be compared as text.");
+                return FileLoadResult.Failure(info.FullName, $"The file is larger than {MaxTextFileBytes / (1024 * 1024)} MB and cannot be compared as text.");
             byte[] bytes;
-            var stream = new FileStream(info.FullName, FileMode.Open, FileAccess.Read, FileShare.Readwrite, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var stream = new FileStream(info.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
             await using (stream.ConfigureAwait(false))
             {
                 bytes = new byte[stream.Length];
@@ -39,10 +39,10 @@ public sealed class TextFileService : ITextFileService
             {
                 Path = info.FullName,
                 Content = TextFileContent.FromBytes(bytes, encoding),
-                IsReadOnly = info. IsReadOnly,
+                IsReadOnly = info.IsReadOnly,
                 Exists = true,
                 LastWriteTimeUtc = info.LastWriteTimeUtc,
-                Length = info. Length
+                Length = info.Length
             };
         }
         catch (OperationCanceledException)
@@ -95,7 +95,7 @@ public sealed class TextFileService : ITextFileService
         }
     }
 
-    /// <summary>Turns file system exceptions into text a user can act on .< /summary>
+    /// <summary>Turns file system exceptions into text a user can act on.</summary>
     public static string Describe(Exception exception) => exception switch
     {
         UnauthorizedAccessException => "Access to the file was denied. Check the file permissions or the read-only flag.",

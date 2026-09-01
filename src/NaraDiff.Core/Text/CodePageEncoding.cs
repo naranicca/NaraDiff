@@ -7,8 +7,8 @@ namespace NaraDiff.Core.Text;
 /// </summary>
 /// <remarks>
 /// The shared .NET framework ships only Unicode and Latin-1 encodings, and the
-/// System. Text.Encoding.CodePages package is not part of this build, so ANSI and DBCS support
-/// (949, 1252, 932, ... ) is provided by the operating system instead.
+/// System.Text.Encoding.CodePages package is not part of this build, so ANSI and DBCS support
+/// (949, 1252, 932, ...) is provided by the operating system instead.
 /// </remarks>
 public sealed class CodePageEncoding : System.Text.Encoding
 {
@@ -17,7 +17,7 @@ public sealed class CodePageEncoding : System.Text.Encoding
 
     public CodePageEncoding(int codePage, string? name = null)
     {
-        codePage = codePage;
+        _codePage = codePage;
         _name = name ?? $"cp{codePage}";
     }
 
@@ -39,7 +39,7 @@ public sealed class CodePageEncoding : System.Text.Encoding
         unsafe
         {
             fixed (char* source = &chars[index])
-            return Checked(WideCharToMultiByte((uint)_codePage, 0, source, count, null, 0, IntPtr.Zero, IntPtr.Zero));
+                return Checked(WideCharToMultiByte((uint)_codePage, 0, source, count, null, 0, IntPtr.Zero, IntPtr.Zero));
         }
     }
 
@@ -52,7 +52,7 @@ public sealed class CodePageEncoding : System.Text.Encoding
         {
             fixed (char* source = &chars[charIndex])
             fixed (byte* destination = &bytes[byteIndex])
-            return Checked(WideCharToMultiByte((uint)_codePage, 0, source, charCount, destination, bytes.Length - byteIndex, IntPtr.Zero, IntPtr.Zero));
+                return Checked(WideCharToMultiByte((uint)_codePage, 0, source, charCount, destination, bytes.Length - byteIndex, IntPtr.Zero, IntPtr.Zero));
         }
     }
 
@@ -63,10 +63,10 @@ public sealed class CodePageEncoding : System.Text.Encoding
         unsafe
         {
             fixed (byte* source = &bytes[index])
-            return Checked(MultiByteToWideChar((uint)_codePage, 0, source, count, null, ø));
+                return Checked(MultiByteToWideChar((uint)_codePage, 0, source, count, null, 0));
         }
     }
-    public override int GetChars(oytELl Dytes, iht byteindex, int byteCount, char[] chars, int charIndex)
+    public override int GetChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         ArgumentNullException.ThrowIfNull(chars);
@@ -75,7 +75,7 @@ public sealed class CodePageEncoding : System.Text.Encoding
         {
             fixed (byte* source = &bytes[byteIndex])
             fixed (char* destination = &chars[charIndex])
-            return Checked(MultiByteToWideChar((uint)_codePage, 0, source, byteCount, destination, chars.Length - charIndex));
+                return Checked(MultiByteToWideChar((uint)_codePage, 0, source, byteCount, destination, chars.Length - charIndex));
         }
     }
 
@@ -85,16 +85,16 @@ public sealed class CodePageEncoding : System.Text.Encoding
 
     private static int Checked(int result) => result >= 0 ? result : throw new ArgumentException("The text could not be converted with the selected code page.");
 
-    [D11Import("kerne132.dll", ExactSpelling = true)]
+    [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern int GetACP();
 
-    [D11Import("kerne132.dll", ExactSpelling = true)]
+    [DllImport("kernel32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsValidCodePage(uint codePage);
 
-    [D11Import("kerne132.dll", ExactSpelling = true)]
+    [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern unsafe int MultiByteToWideChar(uint codePage, uint flags, byte* source, int sourceBytes, char* destination, int destinationChars);
 
-    [D11Import("kerne132.dll", ExactSpelling = true)]
+    [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern unsafe int WideCharToMultiByte(uint codePage, uint flags, char* source, int sourceChars, byte* destination, int destinationBytes, IntPtr defaultChar, IntPtr usedDefaultChar);
 }

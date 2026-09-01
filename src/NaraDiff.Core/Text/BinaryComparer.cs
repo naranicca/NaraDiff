@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using System. Text;
+using System.Text;
 
 namespace NaraDiff.Core.Text;
 
@@ -30,7 +30,7 @@ public sealed class HexRow
             var builder = new StringBuilder(Bytes.Length * 3);
             for (var i = 0; i < Bytes.Length; i++)
             {
-                if (i > 0) builder.Append(i % 8 == 0 ? " " : " ");
+                if (i > 0) builder.Append(i % 8 == 0 ? "  " : " ");
                 builder.Append(Bytes[i].ToString("X2"));
             }
             return builder.ToString();
@@ -91,7 +91,7 @@ public static class BinaryComparer
         }
         return new BinaryComparisonSummary
         {
-            LeftLength = left. LongLength,
+            LeftLength = left.LongLength,
             RightLength = right.LongLength,
             Identical = first is null,
             FirstDifferenceOffset = first,
@@ -101,7 +101,7 @@ public static class BinaryComparer
         };
     }
 
-    public static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes))[ .. 16];
+    public static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes))[..16];
 
     /// <summary>Builds the hex rows of one side, marking bytes that differ from the other side.</summary>
     public static List<HexRow> BuildRows(byte[] bytes, byte[] other, int maxRows = 20000)

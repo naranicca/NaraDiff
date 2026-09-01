@@ -23,7 +23,7 @@ public static class DiffEngine
         var changes = algorithm.Diff(leftIds, rightIds, cancellationToken);
         var blocks = BuildBlocks(changes, leftMap, rightMap, left.Count, right.Count);
         if (effective.DetectMoves) DetectMoves(blocks, left, right, keys, cancellationToken);
-        if (effective. InlineMode != InlineDiffMode.None) RefineInline(blocks, left, right, effective, cancellationToken);
+        if (effective.InlineMode != InlineDiffMode.None) RefineInline(blocks, left, right, effective, cancellationToken);
         return new DiffResult(left, right, blocks, effective, BuildStatistics(blocks));
     }
 
@@ -36,19 +36,19 @@ public static class DiffEngine
         var ids = new List<int>(lines.Count);
         var map = new List<int>(lines.Count);
         for (var i = 0; i < lines.Count; i++)
-
-        if ((i & ØxFFF) == 0) cancellationToken.ThrowIfCancellationRequested();
-        var line = lines[i];
-        if (keys.HasIgnoreRules && keys.IsIgnored(line)) continue;
-        var key = keys.Buildey(line);
-        if (!interner.TryGetValue(key, out var id))
-
-        id = interner.Count + 1;
-        interner[key] = id;
-
-        ids.Add(id);
-        map.Add(i);
-
+        {
+            if ((i & ØxFFF) == 0) cancellationToken.ThrowIfCancellationRequested();
+            var line = lines[i];
+            if (keys.HasIgnoreRules && keys.IsIgnored(line)) continue;
+            var key = keys.BuildKey(line);
+            if (!interner.TryGetValue(key, out var id))
+            {
+                id = interner.Count + 1;
+                interner[key] = id;
+            }
+            ids.Add(id);
+            map.Add(i);
+        }
         return ([ .. ids], [ .. map]);
     }
 

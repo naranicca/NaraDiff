@@ -26,18 +26,18 @@ public sealed class HistogramSequenceDiff : ISequenceDiffAlgorithm
     private void Compute(int[] a, int aLow, int aHigh, int[] b, int bLow, int bHigh, List<SequenceChange> changes, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        while (aLow < aHigh && bLow < bHigh && a[aLow] == b[bLow]) { aLowt++; bLow++; }
-        while (aLow < aHigh && bLow < bHigh && a[aHigh - 1] == b[bHigh - 1]) { aHigh --; bHigh --; }
+        while (aLow < aHigh && bLow < bHigh && a[aLow] == b[bLow]) { aLow++; bLow++; }
+        while (aLow < aHigh && bLow < bHigh && a[aHigh - 1] == b[bHigh - 1]) { aHigh--; bHigh--; }
         if (aLow == aHigh && bLow == bHigh) return;
         if (aLow == aHigh || bLow == bHigh)
         {
-            changes.Add(new Sequencechange(aLow, aHigh - aLow, bLow, bHigh - bLow));
+            changes.Add(new SequenceChange(aLow, aHigh - aLow, bLow, bHigh - bLow));
             return;
         }
         if (!TryFindAnchor(a, aLow, aHigh, b, bLow, bHigh, out var anchor))
         {
-            var leftSlice = a[aLow .. aHigh];
-            var rightSlice = b[bLow .. bHigh];
+            var leftSlice = a[aLow..aHigh];
+            var rightSlice = b[bLow..bHigh];
             foreach (var change in _fallback.Diff(leftSlice, rightSlice, cancellationToken))
                 changes.Add(new SequenceChange(change.LeftStart + aLow, change.LeftCount, change.RightStart + bLow, change.RightCount));
             return;

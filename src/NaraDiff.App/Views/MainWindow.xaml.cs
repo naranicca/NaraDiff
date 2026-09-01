@@ -38,8 +38,8 @@ public partial class MainWindow : Window
         VersionText.Text = $"NaraDiff {Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0"}";
         OptionSummary.Text = settings.DiffOptions.Describe();
         Closing += MainWindow_Closing;
-        SourceInitialized += (_,_) => WindowChrome.ApplyTheme(this, _settings.Theme);
-        ThemeService.Changed +=(_, _) => WindowChrome.ApplyTheme(this, _settings.Theme);
+        SourceInitialized += (_, _) => WindowChrome.ApplyTheme(this, _settings.Theme);
+        ThemeService.Changed += (_, _) => WindowChrome.ApplyTheme(this, _settings.Theme);
     }
 
     private IComparisonView? ActiveView => (Tabs.SelectedItem as TabItem)?.Content as IComparisonView;
@@ -52,12 +52,12 @@ public partial class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(args);
         var paths = args.Where(argument => !argument.StartsWith('-') && !argument.StartsWith('/')).ToList();
-        var merge = args.Any(argument => argument is "-m" or " -- merge" or "/m");
+        var merge = args.Any(argument => argument is "-m" or "--merge" or "/m");
         try
         {
             if (paths.Count >= 3 || (merge && paths.Count == 3))
             {
-                await NewMergeAsync(paths[0], paths[1], paths[2], paths.Count > 3 ? paths[3] :paths[1]);
+                await NewMergeAsync(paths[0], paths[1], paths[2], paths.Count > 3 ? paths[3] : paths[1]);
                 return;
             }
             if (paths.Count == 2)
@@ -89,10 +89,10 @@ public partial class MainWindow : Window
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var title = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Text = api.Title, Maxwidth = 260, TextTrimming = TextTrimming.CharacterEllipsis };
+        var title = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Text = api.Title, MaxWidth = 260, TextTrimming = TextTrimming.CharacterEllipsis };
         var close = new IconButton
         {
-            Icon= TryFindResource("IconClose") as System.Windows.Media.Geometry,
+            Icon = TryFindResource("IconClose") as System.Windows.Media.Geometry,
             Margin = new Thickness(6, 0, -4, 0),
             Height = 20,
             MinWidth = 20,
@@ -103,7 +103,7 @@ public partial class MainWindow : Window
         header.Children.Add(title);
         header.Children.Add(close);
         item.Header = header;
-        api. TitleChanged += (_, _) => title.Text = api.Title;
+        api.TitleChanged += (_, _) => title.Text = api.Title;
         api.StatusChanged += (_, _) =>
         {
             if (ReferenceEquals(ActiveView, api)) StatusText.Text = api.StatusText;
@@ -132,7 +132,7 @@ public partial class MainWindow : Window
 
     private async Task NewFileCompareAsync(string? left, string? right)
     {
-        var view = new FileCompareView(_settings, logger);
+        var view = new FileCompareView(_settings, _logger);
         AddTab(view, view);
         await view.OpenAsync(left, right);
     }
@@ -164,10 +164,12 @@ public partial class MainWindow : Window
     {
         var canApply = ActiveView?.CanApplyChanges == true;
         ToRightButton.IsEnabled = canApply;
-        ToLeftButton. IsEnabled = canApply;
+        ToLeftButton.IsEnabled = canApply;
         AllToRightButton.IsEnabled = canApply;
-        AllToLeftButton. IsEnabled = canApply;
+        AllToLeftButton.IsEnabled = canApply;
     }
+
+    // ---------- toolbar ----------
 
     private async void NewFileCompare_Click(object sender, RoutedEventArgs e)
     {
@@ -242,12 +244,12 @@ public partial class MainWindow : Window
         }
         if (_optionsPanel is null)
         {
-            optionsPanel = new DiffOptionsPanel(_settings);
-            optionsPanel.OptionsChanged += (_, options) =>
+            _optionsPanel = new DiffOptionsPanel(_settings);
+            _optionsPanel.OptionsChanged += (_, options) =>
             {
-            OptionSummary.Text = options.Describe();
-            foreach (var item in Tabs.Items.OfType<TabItem>())
-                if (item.Content is IComparisonView view) view.ApplyDiffOptions(options);
+                OptionSummary.Text = options.Describe();
+                foreach (var item in Tabs.Items.OfType<TabItem>())
+                    if (item.Content is IComparisonView view) view.ApplyDiffOptions(options);
             };
             _optionsPanel.CloseRequested += (_, _) => ShowOptions(false);
             OptionsHost.Content = _optionsPanel;
@@ -299,7 +301,7 @@ public partial class MainWindow : Window
                 ActiveView?.FocusSearch();
                 break;
             case Key.P when control:
-                ShowOptions(OptionsToggle. IsChecked != true);
+                ShowOptions(OptionsToggle.IsChecked != true);
                 break;
             case Key.N when control && shift:
                 NewFolderCompare_Click(sender, e);
@@ -335,13 +337,15 @@ public partial class MainWindow : Window
                 right.TakeRight();
                 break;
             case Key.B when alt && ActiveView is MergeView both:
-                both. TakeBoth();
+                both.TakeBoth();
                 break;
             default:
                 return;
         }
         e.Handled = true;
     }
+
+    // ---------- helpers ----------
 
     private string? PickFile(string title, string? initialDirectory = null)
     {
@@ -357,7 +361,7 @@ public partial class MainWindow : Window
 
     private string? PickFolder(string title)
     {
-        var dialog = new OpenFolderDialog { title = title };
+        var dialog = new OpenFolderDialog { Title = title };
         if (_settings.RecentFolders.Count > 0 && Directory.Exists(_settings.RecentFolders[0])) dialog.InitialDirectory = _settings.RecentFolders[0];
         return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
     }
@@ -386,7 +390,7 @@ public partial class MainWindow : Window
         }
         catch (AggregateException ex)
         {
-            logger.Error("settings-save", ex);
+            _logger.Error("settings-save", ex);
         }
     }
 }

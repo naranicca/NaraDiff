@@ -94,7 +94,7 @@ public static class ThreeWayMerger
     {
         var deltas = new int[changes.Count + 1];
         for (var i = 0; i < changes.Count; i++)
-        deltas[i + 1] = deltas[i] + (changes[i].OtherEnd - changes[i].OtherStart) - (changes[i].BaseEnd - changes[i].BaseStart);
+            deltas[i + 1] = deltas[i] + (changes[i].OtherEnd - changes[i].OtherStart) - (changes[i].BaseEnd - changes[i].BaseStart);
         return deltas;
     }
 

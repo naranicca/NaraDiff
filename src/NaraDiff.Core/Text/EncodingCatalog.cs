@@ -1,4 +1,4 @@
-using System. Text;
+using System.Text;
 
 namespace NaraDiff.Core.Text;
 
@@ -45,7 +45,7 @@ public static class EncodingCatalog
     public const string Utf16LeId = "utf-16le";
     public const string Utf16BeId = "utf-16be";
     public const string Utf32LeId = "utf-32le";
-    public const string Ansild = "ansi";
+    public const string AnsiId = "ansi";
 
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
@@ -71,8 +71,8 @@ public static class EncodingCatalog
             new(Utf32LeId, "UTF-32 LE", new UTF32Encoding(false, true), true)
         };
         items.Add(new EncodingChoice(AnsiId, $"ANSI ({SafeCodePage(CodePageEncoding.Ansi)})", CodePageEncoding.Ansi, false));
-        foreach (var (codePage, label) in new[] {(949,"Korean (949)"),(932,"Japanese (932)"),(936,"Simplified Chinese (936)"), (1252, "Western European (1252)") })
-        if (CodePageEncoding.IsSupported(codePage)) items.Add(new EncodingChoice($"cp{codePage}", label, new CodePageEncoding(codePage, label), false));
+        foreach (var (codePage, label) in new[] { (949, "Korean (949)"), (932, "Japanese (932)"), (936, "Simplified Chinese (936)"), (1252, "Western European (1252)") })
+            if (CodePageEncoding.IsSupported(codePage)) items.Add(new EncodingChoice($"cp{codePage}", label, new CodePageEncoding(codePage, label), false));
         items.Add(new EncodingChoice("latin1", "Latin-1 (ISO-8859-1)", Encoding.Latin1, false));
         return items;
     }
@@ -109,7 +109,7 @@ public static class EncodingCatalog
 
     private static EncodingChoice? DetectUtf16WithoutMark(ReadOnlySpan<byte> bytes)
     {
-        var sample = bytes.Length > 4096 ? bytes[ .. 4096] : bytes;
+        var sample = bytes.Length > 4096 ? bytes[..4096] : bytes;
         // Short buffers cannot be told apart reliably, and a binary file with a few NUL bytes must
         // not be mistaken for UTF-16.
         if (sample.Length < 16 || sample.Length % 2 != 0) return null;
@@ -117,7 +117,7 @@ public static class EncodingCatalog
         for (var i = 0; i + 1 < sample.Length; i += 2)
         {
             if (sample[i] == 0) evenZeros++;
-            if (sample[i +1] == 0) oddZeros++;
+            if (sample[i + 1] == 0) oddZeros++;
         }
         var pairs = sample.Length / 2;
         if (oddZeros > pairs * 0.3 && evenZeros < pairs * 0.05) return Get(Utf16LeId);
@@ -129,7 +129,7 @@ public static class EncodingCatalog
     {
         try
         {
-            _ = StrictUtf8.ReadOnlySpan<byte>(bytes);
+            _ = StrictUtf8.GetCharCount(bytes);
             return true;
         }
         catch (DecoderFallbackException)

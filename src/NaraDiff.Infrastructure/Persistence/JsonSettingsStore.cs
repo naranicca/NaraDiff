@@ -36,7 +36,7 @@ public sealed class JsonSettingsStore : ISettingsStore
 
     public async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var path in new[] { _path, backupPath })
+        foreach (var path in new[] { _path, _backupPath })
         {
             try
             {
@@ -44,8 +44,8 @@ public sealed class JsonSettingsStore : ISettingsStore
                 var stream = File.OpenRead(path);
                 await using (stream.ConfigureAwait(false))
                 {
-                        var settings = await JsonSerializer.DeserializeAsync<AppSettings>(stream, Options, cancellationToken).ConfigureAwait(false);
-                        if (settings is not null) return AppSettings.EnsureUsable(settings);
+                    var settings = await JsonSerializer.DeserializeAsync<AppSettings>(stream, Options, cancellationToken).ConfigureAwait(false);
+                    if (settings is not null) return AppSettings.EnsureUsable(settings);
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -74,7 +74,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-        // Settings are a convenience; a failure to persist them must not break the session.
+            // Settings are a convenience; a failure to persist them must not break the session.
         }
         finally
         {

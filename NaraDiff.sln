@@ -26,11 +26,5 @@ Global
         {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0003}.Debug|x64.Build.0 = Debug|x64
         {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0003}.Release|x64.ActiveCfg = Release|x64
         {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0003}.Release|x64.Build.0 = Release|x64
-        {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0004}.Release|x64.ActiveCfg = Release|Any CPU
-        {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0004}.Release|x64.Build.0 = Release|Any CPU
-        {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0005}.Debug|x64.ActiveCfg = Debug|x64
-        {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0005}.Debug|x64.Build.0 = Debug|x64
-        {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0005}.Release|x64.ActiveCfg = Release|x64
-        {2C7A1F10-6E44-4C0B-9C11-9A1D5E7B0005}.Release|x64.Build.0 = Release|x64
     EndGlobalSection
 EndGlobal

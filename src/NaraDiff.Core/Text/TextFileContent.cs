@@ -41,7 +41,7 @@ public sealed class TextFileContent
 
     public long ByteLength => Bytes.LongLength;
 
-    public static TextFileContent Empty { get; }= new([], ContentKind.Text, EncodingCatalog.Utf8, string.Empty, [new TextLine(string.Empty, LineEndingKind.None)]);
+    public static TextFileContent Empty { get; } = new([], ContentKind.Text, EncodingCatalog.Utf8, string.Empty, [new TextLine(string.Empty, LineEndingKind.None)]);
 
     /// <summary>Decodes a buffer. A forced encoding skips detection; forcing text skips binary sniffing.</summary>
     public static TextFileContent FromBytes(byte[] bytes, EncodingChoice? forcedEncoding = null, bool forceText = false)
@@ -76,7 +76,7 @@ public sealed class TextFileContent
         }
         catch (Exception ex) when (ex is ArgumentException or DecoderFallbackException)
         {
-            return System. Text.Encoding.Latin1.GetString(bytes, offset, bytes.Length - offset);
+            return System.Text.Encoding.Latin1.GetString(bytes, offset, bytes.Length - offset);
         }
     }
 
@@ -88,7 +88,7 @@ public sealed class TextFileContent
     {
         if (bytes.Length == 0) return false;
         if (encoding.Id is EncodingCatalog.Utf16LeId or EncodingCatalog.Utf16BeId or EncodingCatalog.Utf32LeId) return false;
-        var sample = bytes.Length > 8192 ? bytes[ .. 8192] : bytes;
+        var sample = bytes.Length > 8192 ? bytes[..8192] : bytes;
         var control = 0;
         foreach (var b in sample)
         {

@@ -42,9 +42,9 @@ public enum ConnectorDirection
 
 public sealed class ConnectorActionEventArgs(ConnectorLink link, ConnectorDirection direction) : EventArgs
 {
-    public COnnectorLink link { get; } = link;
+    public ConnectorLink Link { get; } = link;
 
-    public ConnectorDirection direction { get; } = direction;
+    public ConnectorDirection Direction { get; } = direction;
 }
 
 /// <summary>
@@ -73,7 +73,7 @@ public sealed class ConnectorRibbon : FrameworkElement
         ThemeService.Changed += (_, _) => InvalidateVisual();
     }
 
-    /// <summary>Raised when one of the hunk copy button is clicked.</summary>
+    /// <summary>Raised when one of the hunk copy buttons is clicked.</summary>
     public event EventHandler<ConnectorActionEventArgs>? Action;
 
     /// <summary>Raised when a ribbon itself is clicked, which scrolls both editors to that change.</summary>
@@ -108,8 +108,8 @@ public sealed class ConnectorRibbon : FrameworkElement
         if (width <= 0 || height <= 0) return;
         drawingContext.DrawRectangle(ThemeService.Brush("GutterBackground"), null, new Rect(0, 0, width, height));
         var edge = ThemeService.Brush("Border");
-        drawingContext.DrawRectangle(edge, null, new Rectangle(0, 0, 1, height));
-        drawingContext.DrawRectangle(edge, null, new Rectangle(width - 1, 0, 1, height));
+        drawingContext.DrawRectangle(edge, null, new Rect(0, 0, 1, height));
+        drawingContext.DrawRectangle(edge, null, new Rect(width - 1, 0, 1, height));
         if (LeftEditor is null || RightEditor is null || Links.Count == 0) return;
         foreach (var link in Links)
         {
@@ -128,7 +128,7 @@ public sealed class ConnectorRibbon : FrameworkElement
             if (ShowRibbons)
             {
                 var hovered = ReferenceEquals(link, _hoveredLink);
-                var pen = new ParallelEnumerable(link.Stroke, hovered ? 1.6 : 1.0) { LinkeJoin = PenLineJoin.Round };
+                var pen = new Pen(link.Stroke, hovered ? 1.6 : 1.0) { LineJoin = PenLineJoin.Round };
                 pen.Freeze();
                 drawingContext.DrawGeometry(link.Fill, pen, shape);
             }
@@ -156,7 +156,7 @@ public sealed class ConnectorRibbon : FrameworkElement
             var foreground = hovered ? ThemeService.Brush("AccentText") : link.Stroke;
             var borderPen = new Pen(hovered ? ThemeService.Brush("Accent") : link.Stroke, 1);
             borderPen.Freeze();
-            drawingContext.DrawRoundRectangle(background, borderPen, bounds, 4, 4);
+            drawingContext.DrawRoundedRectangle(background, borderPen, bounds, 4, 4);
             var glyphPen = new Pen(foreground, 1.5) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
             glyphPen.Freeze();
             DrawArrow(drawingContext, bounds, direction, glyphPen);
@@ -164,26 +164,26 @@ public sealed class ConnectorRibbon : FrameworkElement
         }
     }
 
-    private static void DrawArrow(DrawingContext drawingContext, Rect bounds, ConnectorDirection direction, Pen Pen)
+    private static void DrawArrow(DrawingContext drawingContext, Rect bounds, ConnectorDirection direction, Pen pen)
     {
         var centerY = bounds.Y + bounds.Height / 2;
         var left = bounds.X + 4.5;
         var right = bounds.Right - 4.5;
         if (direction == ConnectorDirection.ToRight)
         {
-            drawingContext.DrawLine(Pen, new Point(left, centerY), new Point(right, centerY));
-            drawingContext.DrawLine(Pen, new Point(right - 3.5, centerY - 3.5), new Point(right, centerY));
-            drawingContext.DrawLine(Pen, new Point(right - 3.5, centerY + 3.5), new Point(right, centerY));
+            drawingContext.DrawLine(pen, new Point(left, centerY), new Point(right, centerY));
+            drawingContext.DrawLine(pen, new Point(right - 3.5, centerY - 3.5), new Point(right, centerY));
+            drawingContext.DrawLine(pen, new Point(right - 3.5, centerY + 3.5), new Point(right, centerY));
         }
         else
         {
-            drawingContext.DrawLine(Pen, new Point(right, centerY), new Point(left, centerY));
-            drawingContext.DrawLine(Pen, new Point(left + 3.5, centerY - 3.5), new Point(left, centerY));
-            drawingContext.DrawLine(Pen, new Point(left + 3.5, centerY + 3.5), new Point(left, centerY));
+            drawingContext.DrawLine(pen, new Point(right, centerY), new Point(left, centerY));
+            drawingContext.DrawLine(pen, new Point(left + 3.5, centerY - 3.5), new Point(left, centerY));
+            drawingContext.DrawLine(pen, new Point(left + 3.5, centerY + 3.5), new Point(left, centerY));
         }
     }
 
-    /// <summary>Draws the warning triangle that mark an unresolved conflicts.</summary>
+    /// <summary>Draws the warning triangle that marks an unresolved conflict.</summary>
     private static void DrawConflictMarker(DrawingContext drawingContext, ConnectorLink link, double centerY)
     {
         var geometry = new StreamGeometry();
@@ -209,13 +209,13 @@ public sealed class ConnectorRibbon : FrameworkElement
             context.BeginFigure(ToPoint(ribbon.Top.Start), true, true);
             context.BezierTo(ToPoint(ribbon.Top.Control1), ToPoint(ribbon.Top.Control2), ToPoint(ribbon.Top.End), true, false);
             context.LineTo(ToPoint(ribbon.Bottom.Start), true, false);
-            context.BezzierTo(ToPoint(ribbon.Bottom.Control1), ToPoint(ribbon.Bottom.Control2), ToPoint(ribbon.Bottom.End), true, false);
+            context.BezierTo(ToPoint(ribbon.Bottom.Control1), ToPoint(ribbon.Bottom.Control2), ToPoint(ribbon.Bottom.End), true, false);
         }
         geometry.Freeze();
         return geometry;
     }
 
-    private static Point ToPoint(RibbonPoint point) => new(Point.X, Point.Y);
+    private static Point ToPoint(RibbonPoint point) => new(point.X, point.Y);
 
     /// <summary>Converts a Y position of an editor text view into this element's coordinates.</summary>
     private double ToLocal(DiffTextEditor editor, double y)
@@ -224,7 +224,7 @@ public sealed class ConnectorRibbon : FrameworkElement
         {
             var view = editor.TextArea.TextView;
             if (!view.IsVisible || !IsVisible) return y;
-            return view.TransformToVisual(this).Transform(newPoint(0, y)).Y;
+            return view.TransformToVisual(this).Transform(new Point(0, y)).Y;
         }
         catch (InvalidOperationException)
         {
@@ -241,9 +241,9 @@ public sealed class ConnectorRibbon : FrameworkElement
         if (button == _hoveredButton && ReferenceEquals(link, _hoveredLink)) return;
         _hoveredButton = button;
         _hoveredLink = link;
-        Cursor = button >= 0 || link is not null ? Cursors.Hand : Cursors.Arrows;
+        Cursor = button >= 0 || link is not null ? Cursors.Hand : Cursors.Arrow;
         ToolTip = button >= 0
-            ? _buttons[Button].Direction == ConnectorDirection.ToRight ? "Copy this change to the right (Alt+Right)" : "Copy this to the left (Alt+Left)"
+            ? _buttons[button].Direction == ConnectorDirection.ToRight ? "Copy this change to the right (Alt+Right)" : "Copy this to the left (Alt+Left)"
             : link?.Tooltip;
         InvalidateVisual();
     }
@@ -261,8 +261,8 @@ public sealed class ConnectorRibbon : FrameworkElement
     {
         base.OnMouseLeftButtonDown(e);
         var position = e.GetPosition(this);
-        var button = _buttons.FindIndex(entry >= EntryPointNotFoundException.Bounds.Contains(position));
-        if(button >= 0)
+        var button = _buttons.FindIndex(entry => entry.Bounds.Contains(position));
+        if (button >= 0)
         {
             var (_, link, direction) = _buttons[button];
             Action?.Invoke(this, new ConnectorActionEventArgs(link, direction));

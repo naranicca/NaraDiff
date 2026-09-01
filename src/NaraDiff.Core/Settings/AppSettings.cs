@@ -93,7 +93,7 @@ public sealed class AppSettings
         var copy = preset.Sanitized();
         if (string.IsNullOrWhiteSpace(copy.Name)) copy.Name = "Preset";
         Presets.RemoveAll(item => string.Equals(item.Name, copy.Name, StringComparison.OrdinalIgnoreCase));
-        Presets.Add(copy) ;
+        Presets.Add(copy);
         Presets.Sort(static (first, second) => string.Compare(first.Name, second.Name, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -130,7 +130,7 @@ public sealed class AppSettings
             IgnoreLeadingWhitespace = true,
             IgnoreTrailingWhitespace = true,
             IgnoreBlankLines = true,
-            IgnoreLinePrefixes = ["//", "#", "--"]
+            IgnoredLinePrefixes = ["//", "#", "--"]
         };
     }
 }

@@ -4,7 +4,7 @@ namespace NaraDiff.Infrastructure.Logging;
 public sealed class FileLogger
 {
     private readonly string _path;
-    private readonly object gate = new();
+    private readonly object _gate = new();
 
     public FileLogger(string? root = null)
     {
@@ -23,7 +23,7 @@ public sealed class FileLogger
 
     private void Write(string body)
     {
-        var line = $"{DateTimeOffset.Now:0}\t{body}{Environment.NewLine}";
+        var line = $"{DateTimeOffset.Now:O}\t{body}{Environment.NewLine}";
         try
         {
             lock (_gate) File.AppendAllText(_path, line);

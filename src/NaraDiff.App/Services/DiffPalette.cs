@@ -1,4 +1,3 @@
-using System.Drawing;
 using System.Windows.Media;
 using NaraDiff.Core.Diff;
 using NaraDiff.Core.Folders;

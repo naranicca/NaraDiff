@@ -1,5 +1,5 @@
 using System.Text;
-using System. Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 namespace NaraDiff.Core.Folders;
 
@@ -21,7 +21,7 @@ public sealed class GlobMatcher
             var trimmed = pattern?.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
             var pathScoped = trimmed.Contains('/') || trimmed.Contains('\\');
-            try {_patterns.Add((new Regex(Translate(trimmed), options), pathScoped)); }
+            try { _patterns.Add((new Regex(Translate(trimmed), options), pathScoped)); }
             catch (ArgumentException) { }
         }
     }
@@ -31,9 +31,9 @@ public sealed class GlobMatcher
     public bool IsExcluded(string name, string relativePath)
     {
         if (_patterns.Count == 0) return false;
-        var normalized = relativePath.Replace('\\','/');
-        foreach (var (regex, pathScoped) in patterns)
-        if (regex. IsMatch(pathScoped ? normalized : name)) return true;
+        var normalized = relativePath.Replace('\\', '/');
+        foreach (var (regex, pathScoped) in _patterns)
+            if (regex.IsMatch(pathScoped ? normalized : name)) return true;
         return false;
     }
 
@@ -41,7 +41,7 @@ public sealed class GlobMatcher
     public static string Translate(string glob)
     {
         ArgumentNullException.ThrowIfNull(glob);
-        var normalized = glob.Replace('\\','/').Trim();
+        var normalized = glob.Replace('\\', '/').Trim();
         var directoryOnly = normalized.EndsWith('/');
         if (directoryOnly) normalized = normalized.TrimEnd('/');
         var builder = new StringBuilder("^");
@@ -51,11 +51,11 @@ public sealed class GlobMatcher
             switch (c)
             {
                 case '*':
-                    if (i+1 < normalized.Length && normalized[i + 1] == '*')
+                    if (i + 1 < normalized.Length && normalized[i + 1] == '*')
                     {
                         i++;
-                        if (i+1< normalized.Length && normalized[i + 1] == '/') { i++; builder.Append("( ?:.* /)?"); }
-                        else builder.Append(" .* ");
+                        if (i + 1< normalized.Length && normalized[i + 1] == '/') { i++; builder.Append("( ?:.* /)?"); }
+                        else builder.Append(".*");
                     }
                     else builder.Append("[^/]*");
                     break;
@@ -67,8 +67,8 @@ public sealed class GlobMatcher
                     if (close < 0) builder.Append("\\[");
                     else
                     {
-                        var set = normalized[(i + 1) .. close];
-                        builder.Append('[').Append(set.StartsWith('!')?"^"+Regex.Escape(set[1 .. ]) : Regex.Escape(set)).Append(']');
+                        var set = normalized[(i + 1)..close];
+                        builder.Append('[').Append(set.StartsWith('!') ? "^"+Regex.Escape(set[1 .. ]) : Regex.Escape(set)).Append(']');
                         i = close;
                     }
                     break;
@@ -78,6 +78,6 @@ public sealed class GlobMatcher
             }
         }
         // A pattern that names a directory also excludes everything inside it.
-        return builder.Append(directoryOnly ? "( ?: / .* )?$" : "$").ToString();
+        return builder.Append(directoryOnly ? "(?:/.*)?$" : "$").ToString();
     }
 }

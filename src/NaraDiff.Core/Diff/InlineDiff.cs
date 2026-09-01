@@ -33,7 +33,7 @@ public static class InlineDiff
                 id = interner.Count + 1;
                 interner[tokens[i].Key] = id;
             }
-            ids[i]=id;
+            ids[i] = id;
         }
         return ids;
     }
@@ -79,7 +79,7 @@ public static class InlineDiff
             if (IsWordCharacter(c)) while (index < text.Length && IsWordCharacter(text[index])) index++;
             else if (char.IsWhiteSpace(c)) while (index < text.Length && char.IsWhiteSpace(text[index])) index++;
             else index++;
-            tokens.Add(new Token(start, index - start, NormalizeToken(text[start .. index], options)));
+            tokens.Add(new Token(start, index - start, NormalizeToken(text[start..index], options)));
         }
         return tokens;
     }
@@ -92,7 +92,7 @@ public static class InlineDiff
         {
             if (options.IgnoreAllWhitespace) return " ";
             if (options.IgnoreWhitespaceRuns) return " ";
-            if (options.TreatTabsAsSpaces) return new string(' ', LineKeyBuilder.ExpandTabs(token, options. TabWidth).Length);
+            if (options.TreatTabsAsSpaces) return new string(' ', LineKeyBuilder.ExpandTabs(token, options.TabWidth).Length);
         }
         return options.IgnoreCase ? token.ToUpperInvariant() : token;
     }

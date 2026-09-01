@@ -7,11 +7,11 @@ using NaraDiff.Infrastructure.Persistence;
 
 namespace NaraDiff.App;
 
-public partial class App : ApplicationException
+public partial class App : Application
 {
     private readonly FileLogger _logger = new();
 
-    protected override async void OnStartUp(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnUnhandledException;
@@ -19,7 +19,7 @@ public partial class App : ApplicationException
         {
             if (args.ExceptionObject is Exception exception) _logger.Error("domain", exception);
         };
-        var store = new JsonSettingStore();
+        var store = new JsonSettingsStore();
         var settings = await store.LoadAsync();
         ThemeService.Apply(settings.Theme, settings.ColorBlindPalette);
         var window = new MainWindow(settings, store, _logger);

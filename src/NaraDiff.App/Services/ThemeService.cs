@@ -34,7 +34,7 @@ public static class ThemeService
             dictionaries.Add(new ResourceDictionary { Source = new Uri(theme == ThemeKind.Dark ? DarkUri : LightUri) });
             dictionaries.Add(new ResourceDictionary { Source = new Uri(SharedUri) });
             application.Resources["DiffInsertFill"] = Palette.InsertFill;
-            application.Resources["DiffInsertStroke"] = Palette. InsertStroke;
+            application.Resources["DiffInsertStroke"] = Palette.InsertStroke;
             application.Resources["DiffDeleteFill"] = Palette.DeleteFill;
             application.Resources["DiffDeleteStroke"] = Palette.DeleteStroke;
             application.Resources["DiffModifyFill"] = Palette.ModifyFill;

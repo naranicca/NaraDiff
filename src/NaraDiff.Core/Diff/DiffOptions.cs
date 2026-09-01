@@ -79,8 +79,8 @@ public sealed class DiffOptions
         IgnoreLineEndings = IgnoreLineEndings,
         IgnoreCase = IgnoreCase,
         IgnoreBlankLines = IgnoreBlankLines,
-        IgnoredLinePatterns = [ .. IgnoredLinePatterns],
-        IgnoredLinePrefixes = [ .. IgnoredLinePrefixes],
+        IgnoredLinePatterns = [.. IgnoredLinePatterns],
+        IgnoredLinePrefixes = [.. IgnoredLinePrefixes],
         DetectMoves = DetectMoves,
         InlineMode = InlineMode,
         InlineBlockLineLimit = InlineBlockLineLimit
@@ -90,10 +90,10 @@ public sealed class DiffOptions
     public DiffOptions Sanitized()
     {
         var clone = Clone();
-        clone. TabWidth = Math.Clamp(clone.TabWidth, 1, MaxTabwidth);
+        clone. TabWidth = Math.Clamp(clone.TabWidth, 1, MaxTabWidth);
         clone.InlineBlockLineLimit = Math.Clamp(clone.InlineBlockLineLimit, 0, 100_000);
-        clone.IgnoredLinePatterns = [ .. clone.IgnoredLinePatterns.Where(pattern => !string.IsNullOrWhiteSpace(pattern) && IsValidPattern(pattern))];
-        clone.IgnoredLinePrefixes = [ .. clone.IgnoredLinePrefixes.Where(prefix => !string.IsNullOrEmpty(prefix))];
+        clone.IgnoredLinePatterns = [.. clone.IgnoredLinePatterns.Where(pattern => !string.IsNullOrWhiteSpace(pattern) && IsValidPattern(pattern))];
+        clone.IgnoredLinePrefixes = [.. clone.IgnoredLinePrefixes.Where(prefix => !string.IsNullOrEmpty(prefix))];
         return clone;
     }
 

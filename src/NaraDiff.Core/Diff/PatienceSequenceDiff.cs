@@ -20,10 +20,10 @@ public sealed class PatienceSequenceDiff : ISequenceDiffAlgorithm
         return SequenceDiffAlgorithms.Normalize(changes);
     }
 
-    private void Compute(int[] a, int alow, int aHigh, int[] b, int bLow, int bHigh, List<SequenceChange> changes, CancellationToken cancellationToken)
+    private void Compute(int[] a, int aLow, int aHigh, int[] b, int bLow, int bHigh, List<SequenceChange> changes, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        while (aLow < aHigh && bLow < bHigh && a[aLow] == b[bLow]) { aLowt++; bLow++; }
+        while (aLow < aHigh && bLow < bHigh && a[aLow] == b[bLow]) { aLow++; bLow++; }
         while (aLow < aHigh && bLow < bHigh && a[aHigh - 1] == b[bHigh - 1]) { aHigh--; bHigh--; }
         if (aLow == aHigh && bLow == bHigh) return;
         if (aLow == aHigh || bLow == bHigh)
@@ -50,8 +50,8 @@ public sealed class PatienceSequenceDiff : ISequenceDiffAlgorithm
 
     private void AppendFallback(int[] a, int aLow, int aHigh, int[] b, int bLow, int bHigh, List<SequenceChange> changes, CancellationToken cancellationToken)
     {
-        var leftSlice = a[aLow .. aHigh];
-        var rightSlice = b[bLow .. bHigh];
+        var leftSlice = a[aLow..aHigh];
+        var rightSlice = b[bLow..bHigh];
         foreach (var change in _fallback.Diff(leftSlice, rightSlice, cancellationToken))
             changes.Add(new SequenceChange(change.LeftStart + aLow, change.LeftCount, change.RightStart + bLow, change.RightCount));
     }
@@ -60,14 +60,14 @@ public sealed class PatienceSequenceDiff : ISequenceDiffAlgorithm
     private static List<(int Left, int Right)> FindAnchors(int[] a, int aLow, int aHigh, int[] b, int bLow, int bHigh)
     {
         var leftCounts = new Dictionary<int, (int Count, int Index)>(aHigh - aLow);
-        for (var i = aLow; i < aHigh; it+)
+        for (var i = aLow; i < aHigh; i++)
         {
             var value = a[i];
             leftCounts[value] = leftCounts.TryGetValue(value, out var entry) ? (entry.Count + 1, entry.Index) : (1, i);
         }
         var candidates = new List<(int Left, int Right)>();
         var rightCounts = new Dictionary<int, (int Count, int Index)>(bHigh - bLow);
-        for (var i = bLow; i < bHigh; itt)
+        for (var i = bLow; i < bHigh; i++)
         {
             var value = b[i];
             rightCounts[value] = rightCounts.TryGetValue(value, out var entry) ? (entry.Count + 1, entry.Index) : (1, i);

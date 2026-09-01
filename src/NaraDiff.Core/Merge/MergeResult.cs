@@ -6,8 +6,7 @@ namespace NaraDiff.Core.Merge;
 /// <summary>The result of a three way merge: the region list plus the two contributing diffs.</summary>
 public sealed class MergeResult
 {
-    internal MergeResult(IReadOnlyList<TextLine> baseLines, IReadOnlyList<TextLine> leftLines, IReadOnlyList<TextLine> rightLines, List<MergeRegion> regions, DiffResult leftDiff, DiffResult rightDiff,
-    DiffOptions options)
+    internal MergeResult(IReadOnlyList<TextLine> baseLines, IReadOnlyList<TextLine> leftLines, IReadOnlyList<TextLine> rightLines, List<MergeRegion> regions, DiffResult leftDiff, DiffResult rightDiff, DiffOptions options)
     {
         BaseLines = baseLines;
         LeftLines = leftLines;
@@ -25,6 +24,7 @@ public sealed class MergeResult
     public IReadOnlyList<TextLine> RightLines { get; }
 
     public IReadOnlyList<MergeRegion> Regions { get; }
+
     /// <summary>Base compared with left; the left pane highlighting is taken from here .< /sumariy
     public DiffResult LeftDiff { get; }
 

@@ -129,7 +129,6 @@ public static class SyncPlanner
                 actions.Add(entry.IsDirectory
                     ? new SyncAction { Kind = SyncActionKind.CreateDirectoryRight, RelativePath = entry.RelativePath, TargetPath = rightPath, IsDirectory = true, Reason = "Missing on the right" }
                     : new SyncAction { Kind = SyncActionKind.CopyLeftToRight, RelativePath = entry.RelativePath, SourcePath = leftPath, TargetPath = rightPath, Bytes = entry.LeftLength, Reason = "Missing on the right" });
-
                 break;
             case FolderEntryStatus.LeftOnly when !toRight && toLeft && options.DeleteOrphans:
                 actions.Add(new SyncAction { Kind = SyncActionKind.DeleteLeft, RelativePath = entry.RelativePath, TargetPath = leftPath, Bytes = entry.LeftLength, IsDirectory = entry.IsDirectory, Overwrites = true, Reason = "Not present on the right" });
@@ -147,11 +146,11 @@ public static class SyncPlanner
                 if (options.Direction == SyncDirection.Bidirectional)
                     actions.Add(newerIsLeft
                         ? new SyncAction { Kind = SyncActionKind.CopyLeftToRight, RelativePath = entry.RelativePath, SourcePath = leftPath, TargetPath = rightPath, Bytes = entry.LeftLength, Overwrites = true, Reason = "Left file is newer" }
-                        : new SyncAction { Kind = SyncActionKind.CopyRightToLeft, RelativePath = entry.RelativePath, SourcePath = rightPath, TargetPath = leftPath, Bytes = entry. RightLength, Overwrites = true, Reason = "Right file is newer" });
+                        : new SyncAction { Kind = SyncActionKind.CopyRightToLeft, RelativePath = entry.RelativePath, SourcePath = rightPath, TargetPath = leftPath, Bytes = entry.RightLength, Overwrites = true, Reason = "Right file is newer" });
                 else if (toRight)
                     actions.Add(new SyncAction { Kind = SyncActionKind.CopyLeftToRight, RelativePath = entry.RelativePath, SourcePath = leftPath, TargetPath = rightPath, Bytes = entry.LeftLength, Overwrites = true, Reason = "Different content" });
                 else
-                    actions.Add(new SyncAction { Kind = SyncActionKind.CopyRightToLeft, RelativePath = entry.RelativePath, SourcePath = rightPath, TargetPath = leftPath, Bytes = entry.RightLength, Overwrites = true, Reason = "Different content"});
+                    actions.Add(new SyncAction { Kind = SyncActionKind.CopyRightToLeft, RelativePath = entry.RelativePath, SourcePath = rightPath, TargetPath = leftPath, Bytes = entry.RightLength, Overwrites = true, Reason = "Different content" });
                     break;
         }
     }

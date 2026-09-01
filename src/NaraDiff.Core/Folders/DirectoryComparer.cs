@@ -13,8 +13,8 @@ public sealed class DirectoryComparer
     private readonly DiffOptions _diffOptions;
     private readonly GlobMatcher _excludes;
     private int _same;
-    private int modified;
-    private int leftOnly;
+    private int _modified;
+    private int _leftOnly;
     private int _rightOnly;
     private int _errors;
     private int _directories;
@@ -54,9 +54,9 @@ public sealed class DirectoryComparer
             Options = _options,
             Statistics = new FolderComparisonStatistics
             {
-                Same = same,
-                Modified = modified,
-                LeftOnly = leftOnly,
+                Same = _same,
+                Modified = _modified,
+                LeftOnly = _leftOnly,
                 RightOnly = _rightOnly,
                 Errors = _errors,
                 Directories = _directories,
@@ -81,7 +81,7 @@ public sealed class DirectoryComparer
             leftEntries.TryGetValue(name, out var leftInfo);
             rightEntries.TryGetValue(name, out var rightInfo);
             if (_excludes.IsExcluded(name, childRelative)) continue;
-            if ( !_options.IncludeHidden && ((leftInfo?.IsHidden ?? false) || (rightInfo?.IsHidden ?? false))) continue;
+            if (!_options.IncludeHidden && ((leftInfo?.IsHidden ?? false) || (rightInfo?.IsHidden ?? false))) continue;
             var isDirectory = (leftInfo?.IsDirectory ?? false) || (rightInfo?.IsDirectory ?? false);
             var entry = new FolderEntry
             {
@@ -96,12 +96,12 @@ public sealed class DirectoryComparer
             {
                 entry.Status = FolderEntryStatus.TypeConflict;
                 entry.Message = "One side is a file and the other side is a directory.";
-                _errorst++;
+                _errors++;
                 continue;
             }
             if (isDirectory)
             {
-                directories++;
+                _directories++;
                 if (leftInfo is null) { entry.Status = FolderEntryStatus.RightOnly; _rightOnly++; }
                 else if (rightInfo is null) { entry.Status = FolderEntryStatus.LeftOnly; _leftOnly++; }
                 if (_options.Recursive && leftInfo is not null && rightInfo is not null)
@@ -111,20 +111,20 @@ public sealed class DirectoryComparer
                 }
                 else if (_options.Recursive)
                 {
-                    var single = leftInfo ?? rightInfo !;
+                    var single = leftInfo ?? rightInfo!;
                     CollectSingleSide(entry, single.FullPath, childRelative, leftInfo is not null, cancellationToken);
                 }
                 continue;
             }
             _files++;
             if (leftInfo is null) { entry.Status = FolderEntryStatus.RightOnly; _rightOnly++; continue; }
-            if (rightInfo is null) { entry.Status = FolderEntryStatus.LeftOnly; leftOnly++; continue; }
+            if (rightInfo is null) { entry.Status = FolderEntryStatus.LeftOnly; _leftOnly++; continue; }
             entry.Status = CompareFiles(entry, leftInfo, rightInfo, cancellationToken);
             switch (entry.Status)
             {
                 case FolderEntryStatus.Same: _same++; break;
                 case FolderEntryStatus.Modified: _modified++; break;
-                case FolderEntryStatus.Error: _errorst++; break;
+                case FolderEntryStatus.Error: _errors++; break;
             }
         }
     }
@@ -138,7 +138,7 @@ public sealed class DirectoryComparer
             cancellationToken.ThrowIfCancellationRequested();
             var childRelative = relativePath.Length == 0 ? name : relativePath + "/" + name;
             if (_excludes.IsExcluded(name, childRelative)) continue;
-            if ( !_options. IncludeHidden && info.IsHidden) continue;
+            if (!_options. IncludeHidden && info.IsHidden) continue;
             var entry = new FolderEntry
             {
                 Name = name,
@@ -151,14 +151,14 @@ public sealed class DirectoryComparer
             parent.Children.Add(entry);
             if (info.IsDirectory)
             {
-                directories++;
+                _directories++;
                 if (isLeft) _leftOnly++; else _rightOnly++;
                 if (_options.Recursive) CollectSingleSide(entry, info.FullPath, childRelative, isLeft, cancellationToken);
             }
             else
             {
-                files++;
-                if (isLeft) leftOnly++; else _rightOnly++;
+                _files++;
+                if (isLeft) _leftOnly++; else _rightOnly++;
             }
         }
     }
@@ -173,7 +173,7 @@ public sealed class DirectoryComparer
             {
                 var attributes = info.Attributes;
                 var isDirectory = (attributes & FileAttributes.Directory) != 0;
-                if ( !_options.IncludeSystem && (attributes & FileAttributes.System) != 0) continue;
+                if (!_options.IncludeSystem && (attributes & FileAttributes.System) != 0) continue;
                 var file = info as FileInfo;
                 result[info.Name] = new FolderSideInfo
                 {
@@ -217,9 +217,9 @@ public sealed class DirectoryComparer
             {
                 FullPath = file.FullName,
                 IsDirectory = false,
-                Length = file. Length,
+                Length = file.Length,
                 LastWriteTimeUtc = file.LastWriteTimeUtc,
-                IsReadOnly = file. IsReadOnly,
+                IsReadOnly = file.IsReadOnly,
                 IsHidden = (file.Attributes & FileAttributes.Hidden) != 0
             };
         }
@@ -245,7 +245,7 @@ public sealed class DirectoryComparer
                 default:
                     if (left.Length != right.Length) return FolderEntryStatus.Modified;
                     return Math.Abs((left.LastWriteTimeUtc - right.LastWriteTimeUtc).TotalSeconds) <= _options.TimeToleranceSeconds
-                        ? FolderEntryStatus. Same
+                        ? FolderEntryStatus.Same
                         : FolderEntryStatus.Modified;
             }
         }

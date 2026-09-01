@@ -25,8 +25,8 @@ public sealed class LineKeyBuilder
             try { patterns.Add(new Regex(pattern, RegexOptions.CultureInvariant)); }
             catch (ArgumentException) { }
         }
-        _ignorePatterns = [ .. patterns];
-        _ignorePrefixes = [ .. options.IgnoredLinePrefixes.Where(prefix => !string.IsNullOrEmpty(prefix))];
+        _ignorePatterns = [.. patterns];
+        _ignorePrefixes = [.. options.IgnoredLinePrefixes.Where(prefix => !string.IsNullOrEmpty(prefix))];
     }
 
     /// <summary>Separator inserted before the terminator name so it cannot collide with line text.</summary>
@@ -37,7 +37,7 @@ public sealed class LineKeyBuilder
     /// <summary>True when the line must not take part in the comparison.</summary>
     public bool IsIgnored(TextLine line)
     {
-        var text = line. Text;
+        var text = line.Text;
         if (_options.IgnoreBlankLines && text.AsSpan().IsWhiteSpace()) return true;
         if (_ignorePrefixes.Length > 0)
         {
@@ -53,7 +53,7 @@ public sealed class LineKeyBuilder
     /// <summary>Builds the comparison key of a line.</summary>
     public string BuildKey(TextLine line)
     {
-        var text = line. Text;
+        var text = line.Text;
         if (_options.TreatTabsAsSpaces && text.Contains('\t')) text = ExpandTabs(text, _options.TabWidth);
         if (_options.IgnoreAllWhitespace) text = RemoveWhitespace(text);
         else
@@ -63,7 +63,7 @@ public sealed class LineKeyBuilder
             if (_options.IgnoreWhitespaceRuns) text = CollapseWhitespace(text);
         }
         if (_options.IgnoreCase) text = text.ToUpperInvariant();
-        if ( !_options.IgnoreLineEndings && line.Ending != LineEndingKind.None) text = string.Concat(text, EndingMarker, LineEndings.DisplayName(line.Ending));
+        if (!_options.IgnoreLineEndings && line.Ending != LineEndingKind.None) text = string.Concat(text, EndingMarker, LineEndings.DisplayName(line.Ending));
         return text;
     }
 
@@ -93,11 +93,11 @@ public sealed class LineKeyBuilder
     {
         var builder = new StringBuilder(text.Length);
         foreach (var c in text)
-        if (!char.IsWhiteSpace(c)) builder.Append(c);
+            if (!char.IsWhiteSpace(c)) builder.Append(c);
         return builder.ToString();
     }
 
-    private static string Collapsewhitespace(string text)
+    private static string CollapseWhitespace(string text)
     {
         var builder = new StringBuilder(text.Length);
         var inRun = false;

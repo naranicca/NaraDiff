@@ -16,7 +16,7 @@ public sealed class LineDecoration
 
     public bool IsBlockEnd { get; init; }
 
-    /// <summary>Character range inside the line that differ.</summary>
+    /// <summary>Character ranges inside the line that differ.</summary>
     public List<TextSpan>? Inline { get; init; }
 
     public Brush? InlineBrush { get; init; }
@@ -33,7 +33,7 @@ public sealed class DiffDecorationSet
 
     public void Set(int line, LineDecoration decoration) => _lines[line] = decoration;
 
-    public bool TryGet(int line, out LineDecoration? decoration) => lines. TryGetValue(line, out decoration);
+    public bool TryGet(int line, out LineDecoration? decoration) => _lines. TryGetValue(line, out decoration);
 
     /// <summary>Builds the decorations of one side of a two way comparison.</summary>
     public static DiffDecorationSet FromDiff(DiffResult result, bool leftSide, DiffPalette palette)
@@ -115,6 +115,7 @@ public sealed class DiffDecorationSet
         return set;
     }
 }
+
 public enum MergePane
 {
     Left,

@@ -51,7 +51,7 @@ public sealed class FolderCompareOptions
         CaseSensitiveNames = CaseSensitiveNames,
         IncludeHidden = IncludeHidden,
         IncludeSystem = IncludeSystem,
-        ExcludePatterns = [ .. ExcludePatterns],
+        ExcludePatterns = [.. ExcludePatterns],
         ContentMode = ContentMode,
         TimeToleranceSeconds = TimeToleranceSeconds,
         MaxContentCompareBytes = MaxContentCompareBytes
@@ -123,11 +123,11 @@ public sealed class FolderComparisonStatistics
 
     public int RightOnly { get; init; }
 
-    public int Errors{ get; init; }
+    public int Errors { get; init; }
 
-    public int Directories{ get; init; }
+    public int Directories { get; init; }
 
-    public int Files{ get; init; }
+    public int Files { get; init; }
 }
 
 public sealed class FolderComparisonResult
@@ -140,7 +140,7 @@ public sealed class FolderComparisonResult
 
     public required FolderCompareOptions Options { get; init; }
 
-    public required FolderComparisionStatistics Statistics { get; init; }
+    public required FolderComparisonStatistics Statistics { get; init; }
 
-    public bool AreIdentical => Statistics.Modified == 0 && Statistics.LeftOnl == 0 && Statistics.RightOnly == 0 && Statistics.Errors == 0;
+    public bool AreIdentical => Statistics.Modified == 0 && Statistics.LeftOnly == 0 && Statistics.RightOnly == 0 && Statistics.Errors == 0;
 }

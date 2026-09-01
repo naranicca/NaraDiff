@@ -42,8 +42,8 @@ public sealed class MyersSequenceDiff : ISequenceDiffAlgorithm
     private static void Compute(int[] a, int aLow, int aHigh, int[] b, int bLow, int bHigh, int[] forward, int[] reverse, List<SequenceChange> changes, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        while (aLow < aHigh && bLow < bHigh && a[aLow] == b[bLow]) { aLowt++; bLow++; }
-        while (aLow < aHigh && bLow < bHigh && a[aHigh - 1] == b[bHigh - 1]) { aHigh --; bHigh --; }
+        while (aLow < aHigh && bLow < bHigh && a[aLow] == b[bLow]) { aLow++; bLow++; }
+        while (aLow < aHigh && bLow < bHigh && a[aHigh - 1] == b[bHigh - 1]) { aHigh--; bHigh--; }
         if (aLow == aHigh && bLow == bHigh) return;
         if (aLow == aHigh || bLow == bHigh)
         {
@@ -51,7 +51,7 @@ public sealed class MyersSequenceDiff : ISequenceDiffAlgorithm
             return;
         }
         var snake = FindMiddleSnake(a, aLow, aHigh, b, bLow, bHigh, forward, reverse, cancellationToken);
-        var splitsProgress = snake.LeftStart > aLow || snake.RightStart > bLow || snake.LeftEnd < aHigh || snake. RightEnd < bHigh;
+        var splitsProgress = snake.LeftStart > aLow || snake.RightStart > bLow || snake.LeftEnd < aHigh || snake.RightEnd < bHigh;
         if (!splitsProgress)
         {
             changes.Add(new SequenceChange(aLow, aHigh - aLow, bLow, bHigh - bLow));
@@ -65,7 +65,7 @@ public sealed class MyersSequenceDiff : ISequenceDiffAlgorithm
     /// Runs a forward search from the top left and a reverse search from the bottom right until the
     /// two searches overlap; the snake that closed the gap splits the region.
     /// </summary>
-    private static Snake FindMiddleSnake(int[] a, int alow, int aHigh, int[] b, int bLow, int bHigh, int[] forward, int[] reverse, CancellationToken cancellationToken)
+    private static Snake FindMiddleSnake(int[] a, int aLow, int aHigh, int[] b, int bLow, int bHigh, int[] forward, int[] reverse, CancellationToken cancellationToken)
     {
         var n = aHigh - aLow;
         var m = bHigh - bLow;
@@ -81,7 +81,7 @@ public sealed class MyersSequenceDiff : ISequenceDiffAlgorithm
         {
             if ((d & 0x3F) == 0) cancellationToken.ThrowIfCancellationRequested();
             var low = -d + 2 * Math.Max(0, d - m);
-            var high = d - 2 * Math.Max(ø, d - n);
+            var high = d - 2 * Math.Max(0, d - n);
             for (var k = low; k <= high; k += 2)
             {
                 int x;
@@ -94,7 +94,7 @@ public sealed class MyersSequenceDiff : ISequenceDiffAlgorithm
                 forward[offset + k] = x;
                 if (!oddDelta) continue;
                 var c = delta - k;
-                if (c <- (d - 1) || c > d - 1) continue;
+                if (c < -(d - 1) || c > d - 1) continue;
                 if (x + reverse[offset + c] < n) continue;
                 return new Snake(aLow + startX, bLow + startY, aLow + x, bLow + y);
             }
@@ -103,7 +103,7 @@ public sealed class MyersSequenceDiff : ISequenceDiffAlgorithm
                 int u;
                 if (c == -d || (c != d && reverse[offset + c - 1] < reverse[offset + c + 1])) u = reverse[offset + c + 1];
                 else u = reverse[offset + c - 1] + 1;
-                var v = u - C;
+                var v = u - c;
                 var startU = u;
                 var startV = v;
                 while (u < n && v < m && a[aHigh - 1 - u] == b[bHigh - 1 - v]) { u++; v++; }

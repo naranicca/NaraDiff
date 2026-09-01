@@ -1,4 +1,4 @@
-using System. Windows;
+using System.Windows;
 using System.Windows.Media;
 using NaraDiff.App.Services;
 using NaraDiff.Core.Folders;
@@ -52,7 +52,7 @@ public partial class SyncPreviewWindow : Window
         foreach (var (label, _) in Directions) DirectionBox.Items.Add(label);
         DirectionBox.SelectedIndex = Math.Max(0, Array.FindIndex(Directions, entry => entry.Direction == options.Direction));
         CopyMissingBox.IsChecked = options.CopyMissing;
-        OverwriteBox. IsChecked = options.OverwriteDifferent;
+        OverwriteBox.IsChecked = options.OverwriteDifferent;
         DeleteBox.IsChecked = options.DeleteOrphans;
         ResultOptions = options;
         _ready = true;
@@ -74,28 +74,28 @@ public partial class SyncPreviewWindow : Window
         ResultOptions = new SyncOptions
         {
             Direction = Directions[Math.Max(0, DirectionBox.SelectedIndex)].Direction,
-            CopyMissing = CopyMissingBox. IsChecked == true,
+            CopyMissing = CopyMissingBox.IsChecked == true,
             OverwriteDifferent = OverwriteBox.IsChecked == true,
             DeleteOrphans = DeleteBox.IsChecked == true
         };
         _plan = SyncPlanner.Create(_comparison, ResultOptions);
         var palette = ThemeService.Palette;
-        ActionList. ItemsSource = _plan.Actions.Select(action => new SyncActionRow
+        ActionList.ItemsSource = _plan.Actions.Select(action => new SyncActionRow
         {
             Direction = action.DirectionText,
             Path = action.RelativePath,
             Target = action.TargetPath,
-            Size = action.IsDirectory ? string.Empty : $"{action.Bytes:No}",
+            Size = action.IsDirectory ? string.Empty : $"{action.Bytes:N0}",
             Reason = action.Reason + (action.Overwrites && !action.IsDelete ? " (replaces the target file)" : string.Empty),
             Accent = action.IsDelete ? palette.DeleteStroke : action.Overwrites ? palette.ModifyStroke : palette.InsertStroke
         }).ToList();
         SummaryText.Text = _plan.IsEmpty
             ? "Nothing to do: the folders already match the selected rules."
-            : $"{_plan.CopyCount:NO} files to copy ({_plan.TotalBytes:No} bytes), {_plan.DirectoryCount:NO} folders to create, " +
-              $"{_plan.OverwriteCount:NO} files would be replaced and {_plan.DeleteCount:No} deleted.";
+            : $"{_plan.CopyCount:N0} files to copy ({_plan.TotalBytes:N0} bytes), {_plan.DirectoryCount:N0} folders to create, " +
+              $"{_plan.OverwriteCount:N0} files would be replaced and {_plan.DeleteCount:N0} deleted.";
         ConfirmDeleteBox.Visibility = _plan.DeleteCount > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (_plan.DeleteCount == 0) ConfirmDeleteBox.IsChecked = false;
-        RunButton.IsEnabled = !_ plan.IsEmpty && (_plan.DeleteCount == 0 || ConfirmDeleteBox.IsChecked == true);
+        RunButton.IsEnabled = !_plan.IsEmpty && (_plan.DeleteCount == 0 || ConfirmDeleteBox.IsChecked == true);
         StatusText.Text = _plan.DeleteCount > 0 && ConfirmDeleteBox.IsChecked != true
             ? "Confirm the deletions to enable Run."
             : string.Empty;
@@ -107,26 +107,26 @@ public partial class SyncPreviewWindow : Window
         var allowDeletions = ConfirmDeleteBox.IsChecked == true;
         var question = $"Run {_plan.Actions.Count:N0} operations?" +
                        (_plan.OverwriteCount > 0 ? $"\n{_plan.OverwriteCount:N0} existing files will be replaced." : string.Empty) +
-                       (_plan.DeleteCount > 0 ? $"\n{_plan.DeleteCount:No} files or folders will be deleted." : string.Empty);
+                       (_plan.DeleteCount > 0 ? $"\n{_plan.DeleteCount:N0} files or folders will be deleted." : string.Empty);
         if (MessageBox.Show(this, question, "NaraDiff", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
-        RunButton. IsEnabled = false;
-        StatusText. Text = "Running ... ";
+        RunButton.IsEnabled = false;
+        StatusText.Text = "Running ... ";
         try
         {
             var report = await new DirectorySyncExecutor().ExecuteAsync(_plan, allowDeletions, new Progress<string>(path => StatusText.Text = path));
-            Summary = $"Synchronisation finished: {report.SucceededCount:N0} succeeded, {report.FailedCount:No} failed.";
+            Summary = $"Synchronisation finished: {report.SucceededCount:N0} succeeded, {report.FailedCount:N0} failed.";
             if (report.FailedCount > 0)
-
-            var details = string.Join(Environment.NewLine, report.Failures.Take(12).Select(failure => $"{failure.Action.RelativePath}: {failure.Error}"));
-            MessageBox.Show(this, $"{Summary}{Environment.NewLine}{Environment.NewLine}{details}", "NaraDiff", MessageBoxButton.OK, MessageBoxImage.Warning);
-
+            {
+                var details = string.Join(Environment.NewLine, report.Failures.Take(12).Select(failure => $"{failure.Action.RelativePath}: {failure.Error}"));
+                MessageBox.Show(this, $"{Summary}{Environment.NewLine}{Environment.NewLine}{details}", "NaraDiff", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             DialogResult = true;
         }
         catch (Exception ex)
         {
-            logger.Error("folder-sync", ex);
+            _logger.Error("folder-sync", ex);
             MessageBox.Show(this, $"The synchronisation failed: {ex.Message}", "NaraDiff", MessageBoxButton.OK, MessageBoxImage.Error);
-            RunButton. IsEnabled = true;
+            RunButton.IsEnabled = true;
         }
     }
 

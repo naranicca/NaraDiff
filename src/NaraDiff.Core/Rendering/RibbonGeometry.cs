@@ -38,18 +38,18 @@ public static class RibbonGeometry
     /// </summary>
     public static Ribbon Build(double leftTop, double leftBottom, double rightTop, double rightBottom, double width, double curvature = DefaultCurvature)
     {
-        if (double.IsNaN(width) || width < 0) width =0;
+        if (double.IsNaN(width) || width < 0) width = 0;
         curvature = Math.Clamp(curvature, 0, 1);
         (leftTop, leftBottom) = Inflate(leftTop, leftBottom);
         (rightTop, rightBottom) = Inflate(rightTop, rightBottom);
         var nearControl = width * curvature;
         var farControl = width * (1 - curvature);
         var top = new RibbonCurve(
-            new RibbonPoint(ø, leftTop),
+            new RibbonPoint(0, leftTop),
             new RibbonPoint(nearControl, leftTop),
             new RibbonPoint(farControl, rightTop),
             new RibbonPoint(width, rightTop));
-        bottom = new RibbonCurve(
+        var bottom = new RibbonCurve(
             new RibbonPoint(width, rightBottom),
             new RibbonPoint(farControl, rightBottom),
             new RibbonPoint(nearControl, leftBottom),
@@ -72,8 +72,8 @@ public static class RibbonGeometry
     {
         t = Math.Clamp(t, 0, 1);
         var u = 1 - t;
-        var x = u* u * u * curve.Start.X+3* u* u* t* curve.Control1.X+3 * u * t* t * curve.Control2.X + t * t * t * curve.End.X;
-        var y = u * u* u* curve.Start.Y+3* u * u * t* curve.Control1.Y +3 * u * t* t * curve.Control2.Y + t * t * t * curve.End.Y;
+        var x = u * u * u * curve.Start.X + 3 * u * u * t * curve.Control1.X + 3 * u * t * t * curve.Control2.X + t * t * t * curve.End.X;
+        var y = u * u * u * curve.Start.Y + 3 * u * u * t * curve.Control1.Y + 3 * u * t * t * curve.Control2.Y + t * t * t * curve.End.Y;
         return new RibbonPoint(x, y);
     }
 

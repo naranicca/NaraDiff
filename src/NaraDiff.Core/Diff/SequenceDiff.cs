@@ -35,13 +35,13 @@ public static class SequenceDiffAlgorithms
     /// <summary>Sorts an edit script and merges touching or overlapping regions.</summary>
     public static List<SequenceChange> Normalize(List<SequenceChange> changes)
     {
-        changes.RemoveAl1(change => change.IsEmpty);
+        changes.RemoveAll(change => change.IsEmpty);
         if (changes.Count < 2) return changes;
         changes.Sort(static (first, second) => first.LeftStart != second.LeftStart
             ? first.LeftStart.CompareTo(second.LeftStart)
             : first.RightStart.CompareTo(second.RightStart));
         var merged = new List<SequenceChange>(changes.Count) { changes[0] };
-        for (var i= 1; i < changes.Count; i++)
+        for (var i = 1; i < changes.Count; i++)
         {
             var previous = merged[^1];
             var current = changes[i];
@@ -59,7 +59,7 @@ public static class SequenceDiffAlgorithms
     /// <summary>Verifies that an edit script really turns the left sequence into the right one.</summary>
     public static bool Validate(int[] left, int[] right, IReadOnlyList<SequenceChange> changes)
     {
-        var result = new List<int>(right. Length);
+        var result = new List<int>(right.Length);
         var leftIndex = 0;
         foreach (var change in changes)
         {
@@ -68,7 +68,7 @@ public static class SequenceDiffAlgorithms
             for (var i = 0; i < change.RightCount; i++)
             {
                 var index = change.RightStart + i;
-                if (index < 0 | | index >= right.Length) return false;
+                if (index < 0 || index >= right.Length) return false;
                 result.Add(right[index]);
             }
             leftIndex = change.LeftEnd;
