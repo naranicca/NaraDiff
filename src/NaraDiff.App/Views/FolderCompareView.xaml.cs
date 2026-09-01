@@ -254,6 +254,8 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             TypeText = entry.IsDirectory ? "folder" : entry.Extension.TrimStart('.'),
             StatusFill = entry.Status == FolderEntryStatus.Same ? Brushes.Transparent : palette.FillFor(entry.Status),
             StatusStroke = entry.Status == FolderEntryStatus.Same ? ThemeService.Brush("TextDisabled") : palette.StrokeFor(entry.Status),
+            Indent = new Thickness(depth * 16, 0, 0, 0),
+            ExpanderVisibility = children.Count > 0 ? Visibility.Visible : Visibility.Hidden,
             LeftSize = entry.Left is null || entry.IsDirectory ? string.Empty : $"{entry.LeftLength:N0}",
             RightSize = entry.Right is null || entry.IsDirectory ? string.Empty : $"{entry.RightLength:N0}",
             LeftModified = entry.Left is null ? string.Empty : entry.Left.LastWriteTimeUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
