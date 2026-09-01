@@ -33,6 +33,7 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
         if (textView.VisualLinesValid is false || textView.Document is null) return;
         var width = Math.Max(textView.ActualWidth, 0);
         var scroll = textView.ScrollOffset.Y;
+        VisualLine? lastVisualLine = null;
         foreach (var visualLine in textView.VisualLines)
         {
             var documentLine = visualLine.FirstDocumentLine;
@@ -53,7 +54,18 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
                 DrawInline(textView, drawingContext, documentLine, decoration);
             }
             if (SearchMatches.TryGet(lineIndex, out var match) && match is not null) DrawInline(textView, drawingContext, documentLine, match);
+            if (Decorations.TryGetBoundaryMarker(lineIndex, out var markerBrush) && markerBrush is not null) DrawBoundaryMarker(drawingContext, markerBrush, top, width);
+            lastVisualLine = visualLine;
         }
+        if (lastVisualLine is not null &&
+            Decorations.TryGetBoundaryMarker(textView.Document.LineCount, out var endMarkerBrush) && endMarkerBrush is not null)
+            DrawBoundaryMarker(drawingContext, endMarkerBrush, lastVisualLine.VisualTop - scroll + lastVisualLine.Height, width);
+    }
+
+    private static void DrawBoundaryMarker(DrawingContext drawingContext, Brush brush, double boundaryY, double width)
+    {
+        const double thickness = 3;
+        drawingContext.DrawRectangle(brush, null, new Rect(0, boundaryY - thickness / 2, width, thickness));
     }
 
     private static void DrawInline(TextView textView, DrawingContext drawingContext, DocumentLine documentLine, LineDecoration decoration)

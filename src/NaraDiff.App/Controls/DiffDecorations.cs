@@ -27,6 +27,8 @@ public sealed class DiffDecorationSet
 {
     private readonly Dictionary<int, LineDecoration> _lines = [];
 
+    private readonly Dictionary<int, Brush> _boundaryMarkers = [];
+
     public static DiffDecorationSet Empty { get; } = new();
 
     public int Count => _lines.Count;
@@ -34,6 +36,10 @@ public sealed class DiffDecorationSet
     public void Set(int line, LineDecoration decoration) => _lines[line] = decoration;
 
     public bool TryGet(int line, out LineDecoration? decoration) => _lines.TryGetValue(line, out decoration);
+
+    public void SetBoundaryMarker(int beforeLine, Brush brush) => _boundaryMarkers[beforeLine] = brush;
+
+    public bool TryGetBoundaryMarker(int beforeLine, out Brush? brush) => _boundaryMarkers.TryGetValue(beforeLine, out brush);
 
     /// <summary>Builds the decorations of one side of a two way comparison.</summary>
     public static DiffDecorationSet FromDiff(DiffResult result, bool leftSide, DiffPalette palette)
@@ -45,7 +51,11 @@ public sealed class DiffDecorationSet
         {
             var start = leftSide ? block.LeftStart : block.RightStart;
             var count = leftSide ? block.LeftCount : block.RightCount;
-            if (count == 0) continue;
+            if (count == 0)
+            {
+                set.SetBoundaryMarker(start, palette.StrokeFor(block.Kind, block.IsMoved));
+                continue;
+            }
             var fill = palette.FillFor(block.Kind, block.IsMoved);
             var stroke = palette.StrokeFor(block.Kind, block.IsMoved);
             var inlineBrush = palette.InlineFor(block.Kind);
@@ -82,12 +92,16 @@ public sealed class DiffDecorationSet
                 MergePane.Left => (region.LeftStart, region.LeftCount),
                 _ => (region.RightStart, region.RightCount)
             };
-            if (count == 0) continue;
             // An unresolved conflict is painted in the conflict colour; once it is resolved it becomes an
             // ordinary merged change so the eye is drawn only to what still needs a decision.
             var resolvedConflict = region.IsConflict && region.IsResolved;
             var fill = region.IsConflict && !region.IsResolved ? palette.ConflictFill : resolvedConflict ? palette.ModifyFill : palette.FillFor(region.Kind);
             var stroke = region.IsConflict && !region.IsResolved ? palette.ConflictStroke : resolvedConflict ? palette.ModifyStroke : palette.StrokeFor(region.Kind);
+            if (count == 0)
+            {
+                set.SetBoundaryMarker(start, stroke);
+                continue;
+            }
             for (var line = start; line < start + count; line++)
                 set.Set(line, new LineDecoration
                 {
