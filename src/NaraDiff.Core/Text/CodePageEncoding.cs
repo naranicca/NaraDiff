@@ -66,6 +66,7 @@ public sealed class CodePageEncoding : System.Text.Encoding
                 return Checked(MultiByteToWideChar((uint)_codePage, 0, source, count, null, 0));
         }
     }
+
     public override int GetChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
     {
         ArgumentNullException.ThrowIfNull(bytes);

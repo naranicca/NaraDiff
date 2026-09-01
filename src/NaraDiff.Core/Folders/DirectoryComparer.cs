@@ -138,7 +138,7 @@ public sealed class DirectoryComparer
             cancellationToken.ThrowIfCancellationRequested();
             var childRelative = relativePath.Length == 0 ? name : relativePath + "/" + name;
             if (_excludes.IsExcluded(name, childRelative)) continue;
-            if (!_options. IncludeHidden && info.IsHidden) continue;
+            if (!_options.IncludeHidden && info.IsHidden) continue;
             var entry = new FolderEntry
             {
                 Name = name,

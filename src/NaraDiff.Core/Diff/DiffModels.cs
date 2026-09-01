@@ -86,7 +86,7 @@ public sealed class DiffStatistics
 /// <summary>A left/right line pair used to keep the two editors scrolled to matching content.</summary>
 public readonly record struct LineAnchor(int Left, int Right);
 
-/// <summary>Teh result of comparing two documents.</summary>
+/// <summary>The result of comparing two documents.</summary>
 public sealed class DiffResult
 {
     private readonly List<LineAnchor> _anchors;

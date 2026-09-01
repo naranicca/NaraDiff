@@ -49,7 +49,7 @@ public static class DiffEngine
             ids.Add(id);
             map.Add(i);
         }
-        return ([ .. ids], [ .. map]);
+        return ([.. ids], [.. map]);
     }
 
     /// <summary>Translates significant line indexes back to document line indexes.</summary>
@@ -141,7 +141,7 @@ public static class DiffEngine
         Inserted = blocks.Count(block => block.Kind == DiffBlockKind.Insert),
         Deleted = blocks.Count(block => block.Kind == DiffBlockKind.Delete),
         Modified = blocks.Count(block => block.Kind == DiffBlockKind.Modify),
-        Moved = blocks.Count(block => block. IsMoved),
+        Moved = blocks.Count(block => block.IsMoved),
         ChangedLeftLines = blocks.Sum(block => block.LeftCount),
         ChangedRightLines = blocks.Sum(block => block.RightCount)
     };

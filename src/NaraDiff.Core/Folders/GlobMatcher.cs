@@ -54,7 +54,7 @@ public sealed class GlobMatcher
                     if (i + 1 < normalized.Length && normalized[i + 1] == '*')
                     {
                         i++;
-                        if (i + 1< normalized.Length && normalized[i + 1] == '/') { i++; builder.Append("( ?:.* /)?"); }
+                        if (i + 1< normalized.Length && normalized[i + 1] == '/') { i++; builder.Append("(?:.*/)?"); }
                         else builder.Append(".*");
                     }
                     else builder.Append("[^/]*");
@@ -68,7 +68,7 @@ public sealed class GlobMatcher
                     else
                     {
                         var set = normalized[(i + 1)..close];
-                        builder.Append('[').Append(set.StartsWith('!') ? "^"+Regex.Escape(set[1 .. ]) : Regex.Escape(set)).Append(']');
+                        builder.Append('[').Append(set.StartsWith('!') ? "^" + Regex.Escape(set[1..]) : Regex.Escape(set)).Append(']');
                         i = close;
                     }
                     break;

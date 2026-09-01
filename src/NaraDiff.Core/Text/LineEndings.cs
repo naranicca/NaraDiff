@@ -48,18 +48,18 @@ public static class LineEndings
     {
         var lines = new List<TextLine>(Math.Max(4, text.Length / 32));
         var start = 0;
-        for (var i= 0; i < text.Length; i++)
+        for (var i = 0; i < text.Length; i++)
         {
             var c = text[i];
             if (c != '\n' && c != '\r') continue;
             var end = i;
             LineEndingKind ending;
-            if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n') {ending = LineEndingKind.CrLf; i++; }
+            if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n') { ending = LineEndingKind.CrLf; i++; }
             else ending = c == '\n' ? LineEndingKind.Lf : LineEndingKind.Cr;
-            lines.Add(new TextLine(text[start .. end], ending));
+            lines.Add(new TextLine(text[start..end], ending));
             start = i + 1;
         }
-        lines.Add(new TextLine(text[start .. ], LineEndingKind.None));
+        lines.Add(new TextLine(text[start..], LineEndingKind.None));
         return lines;
     }
 

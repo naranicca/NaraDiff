@@ -151,7 +151,7 @@ public static class SyncPlanner
                     actions.Add(new SyncAction { Kind = SyncActionKind.CopyLeftToRight, RelativePath = entry.RelativePath, SourcePath = leftPath, TargetPath = rightPath, Bytes = entry.LeftLength, Overwrites = true, Reason = "Different content" });
                 else
                     actions.Add(new SyncAction { Kind = SyncActionKind.CopyRightToLeft, RelativePath = entry.RelativePath, SourcePath = rightPath, TargetPath = leftPath, Bytes = entry.RightLength, Overwrites = true, Reason = "Different content" });
-                    break;
+                break;
         }
     }
 }

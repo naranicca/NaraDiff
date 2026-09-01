@@ -25,7 +25,7 @@ public sealed class MergeResult
 
     public IReadOnlyList<MergeRegion> Regions { get; }
 
-    /// <summary>Base compared with left; the left pane highlighting is taken from here .< /sumariy
+    /// <summary>Base compared with left; the left pane highlighting is taken from here.</summary>
     public DiffResult LeftDiff { get; }
 
     /// <summary>Base compared with right.</summary>
