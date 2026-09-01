@@ -49,5 +49,5 @@ public static class ThemeService
 
     /// <summary>Looks up a themed brush by key, with a transparent fallback while resources load.</summary>
     public static System.Windows.Media.Brush Brush(string key) =>
-        Application.Current?.TryFindResource(key) as System.Windows.Brush ?? System.Windows.Media.Brushes.Transparent;
+        Application.Current?.TryFindResource(key) as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.Transparent;
 }

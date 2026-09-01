@@ -75,7 +75,7 @@ public partial class FilePaneHeader : UserControl
     {
         _suppressEvents = true;
         EncodingBox.SelectedItem = EncodingCatalog.All.FirstOrDefault(item => item.Id == choice.Id) ?? EncodingCatalog.Utf8;
-        suppressEvents = false;
+        _suppressEvents = false;
     }
 
     public void SetLineEndingMode(SaveLineEndingMode mode)
