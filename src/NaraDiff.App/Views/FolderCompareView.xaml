@@ -32,7 +32,7 @@
         <controls:IconButton Grid.Column="2" Icon="{DynamicResource IconOpen}" ToolTip="Select the left folder" Click="BrowseLeft_Click"/>
         <TextBlock Grid.Column="3" Text="Right" Foreground="{DynamicResource TextSecondary}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="14,0,8,0"/>
         <TextBox x:Name="RightPathBox" Grid.Column="4" ToolTip="Right folder"/>
-        <controls: IconButton Grid.Column="5" Icon="{DynamicResource IconOpen}" ToolTip="Select the right folder" Click="BrowseRight_Click"/>
+        <controls:IconButton Grid.Column="5" Icon="{DynamicResource IconOpen}" ToolTip="Select the right folder" Click="BrowseRight_Click"/>
         <StackPanel Grid.Column="6" Orientation="Horizontal" Margin="10,0,0,0">
           <Button x:Name="CompareButton" Content="Compare" Style="{DynamicResource PrimaryButton}" Click="Compare_Click"/>
           <Button x:Name="CancelButton" Content="Cancel" Margin="6,0,0,0" IsEnabled="False" Click="Cancel_Click"/>
@@ -51,11 +51,11 @@
         <CheckBox x:Name="OnlyDifferencesBox" Content="Only differences" Margin="14,0,0,0" Click="Filter_Changed"
                   ToolTip="Hide entries that are identical on both sides"/>
         <TextBlock Text="Exclude" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="14,0,6,0"/>
-        <TextBox x:Name="ExcludeBox" Width="230" ToolTip="Semicolon separated glob patterns, for example bin/;obj/ ;*. log" KeyDown="Exclude_KeyDown"/>
+        <TextBox x:Name="ExcludeBox" Width="230" ToolTip="Semicolon separated glob patterns, for example bin/;obj/;*.log" KeyDown="Exclude_KeyDown"/>
         <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
-        <controls: IconButton Icon="{DynamicResource IconExpand}" Label="Expand" Click="Expand_Click" ToolTip="Expand every folder"/>
+        <controls:IconButton Icon="{DynamicResource IconExpand}" Label="Expand" Click="Expand_Click" ToolTip="Expand every folder"/>
         <controls:IconButton Icon="{DynamicResource IconCollapse}" Label="Collapse" Click="Collapse_Click" ToolTip="Collapse every folder"/>
-        <controls: IconButton Icon="{DynamicResource IconSync}" Label="Synchronise" Click="Sync_Click" ToolTip="Preview and run a folder synchronisation"/>
+        <controls:IconButton Icon="{DynamicResource IconSync}" Label="Synchronise" Click="Sync_Click" ToolTip="Preview and run a folder synchronisation"/>
       </WrapPanel>
     </Border>
 

@@ -11,7 +11,7 @@
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <TextBlock Text="Comparison options" FontWeight="SemiBold" VerticalAlignment="Center"/>
-          <controls: IconButton Grid.Column="1" Icon="{DynamicResource IconClose}" ToolTip="Hide the options panel" Click="Close_Click"/>
+          <controls:IconButton Grid.Column="1" Icon="{DynamicResource IconClose}" ToolTip="Hide the options panel" Click="Close_Click"/>
         </Grid>
       </Border>
       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,10">
@@ -20,7 +20,7 @@
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <ComboBox x:Name="PresetBox" SelectionChanged="Preset_Changed" ToolTip="Load a saved set of options"/>
-            <controls: IconButton Grid.Column="1" Icon="{DynamicResource IconClose}" ToolTip="Delete the selected preset" Click="DeletePreset_Click"/>
+            <controls:IconButton Grid.Column="1" Icon="{DynamicResource IconClose}" ToolTip="Delete the selected preset" Click="DeletePreset_Click"/>
           </Grid>
           <Grid Margin="0,6,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -41,8 +41,8 @@
           <CheckBox x:Name="LeadingBox" Content="Ignore leading whitespace" Click="Option_Changed"/>
           <CheckBox x:Name="TrailingBox" Content="Ignore trailing whitespace" Margin="0,6,0,0" Click="Option_Changed"/>
           <CheckBox x:Name="RunsBox" Content="Ignore the number of spaces" Margin="0,6,0,0" Click="Option_Changed"/>
-          <CheckBox x:Name="AllwhitespaceBox" Content="Ignore all whitespace" Margin="0,6,0,0" Click="Option_Changed"/>
-          <CheckBox x:Name="TabsBox" Content="Treat tabs like spaces" Margin="0,6,0,0" Click="Option Changed"/>
+          <CheckBox x:Name="AllWhitespaceBox" Content="Ignore all whitespace" Margin="0,6,0,0" Click="Option_Changed"/>
+          <CheckBox x:Name="TabsBox" Content="Treat tabs like spaces" Margin="0,6,0,0" Click="Option_Changed"/>
           <Grid Margin="0,6,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
             <TextBlock Text="Tab width" VerticalAlignment="Center"/>
@@ -59,7 +59,7 @@
           <TextBlock Text="Ignored lines" Style="{DynamicResource SectionLabel}"/>
           <TextBlock Text="Regular expressions, one per line" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
           <TextBox x:Name="PatternBox" Height="70" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto"
-                  VerticalContentAlignment="Top" LostKeyboardFocus="Rules_Committed" ToolTip="A line matching any pattern is excluded from the comparison"/>
+                   VerticalContentAlignment="Top" LostKeyboardFocus="Rules_Committed" ToolTip="A line matching any pattern is excluded from the comparison"/>
           <TextBlock x:Name="PatternError" Foreground="#FFF85149" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"/>
           <TextBlock Text="Ignored prefixes, separated by spaces" Foreground="{DynamicResource TextSecondary}" Margin="0,8,0,4"/>
           <TextBox x:Name="PrefixBox" LostKeyboardFocus="Rules_Committed" ToolTip="For example: // # -- ;"/>

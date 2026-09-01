@@ -15,7 +15,7 @@
 
     <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="*"/><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
+        <ColumnDefinition Width="*"/><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
       </Grid.ColumnDefinitions>
       <controls:FilePaneHeader x:Name="LeftHeader" Grid.Column="0" Role="Left"/>
       <Border Grid.Column="1" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
@@ -26,13 +26,13 @@
     </Grid>
 
     <Border x:Name="NoticeBar" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource SurfaceRaised}"
-      BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="10,6">
+            BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="10,6">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <TextBlock x:Name="NoticeText" VerticalAlignment="Center" TextWrapping="Wrap"/>
         <StackPanel Grid.Column="1" Orientation="Horizontal">
-        <Button x:Name="NoticeActionButton" Content="Reload" Margin="8,0,0,0" Click="NoticeAction_Click"/>
-        <controls: IconButton Icon="{DynamicResource IconClose}" ToolTip="Dismiss" Margin="4,0,0,0" Click="NoticeDismiss_Click"/>
+          <Button x:Name="NoticeActionButton" Content="Reload" Margin="8,0,0,0" Click="NoticeAction_Click"/>
+          <controls:IconButton Icon="{DynamicResource IconClose}" ToolTip="Dismiss" Margin="4,0,0,0" Click="NoticeDismiss_Click"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -47,12 +47,12 @@
         <TextBox x:Name="SearchBox" Grid.Column="1" MaxWidth="420" HorizontalAlignment="Left" MinWidth="240"
                  ToolTip="Search text; Enter finds the next match" TextChanged="SearchBox_TextChanged" KeyDown="SearchBox_KeyDown"/>
         <StackPanel Grid.Column="2" Orientation="Horizontal">
-          <controls: IconToggleButton x:Name="SearchRegexToggle" Label=" .* " ToolTip="Regular expression" Click="SearchOption_Changed"/>
-          <controls: IconToggleButton x:Name="SearchCaseToggle" Label="Aa" ToolTip="Match case" Click="SearchOption_Changed"/>
+          <controls:IconToggleButton x:Name="SearchRegexToggle" Label=".*" ToolTip="Regular expression" Click="SearchOption_Changed"/>
+          <controls:IconToggleButton x:Name="SearchCaseToggle" Label="Aa" ToolTip="Match case" Click="SearchOption_Changed"/>
           <TextBlock x:Name="SearchCountText" VerticalAlignment="Center" Margin="10,0" Foreground="{DynamicResource TextSecondary}"/>
           <controls:IconButton Icon="{DynamicResource IconPrevious}" ToolTip="Previous match (Shift+F3)" Click="SearchPrevious_Click"/>
-          <controls: IconButton Icon="{DynamicResource IconNext}" ToolTip="Next match (F3)" Click="SearchNext_Click"/>
-          <controls: IconButton Icon="{DynamicResource IconClose}" ToolTip="Close the search bar (Esc)" Click="SearchClose_Click"/>
+          <controls:IconButton Icon="{DynamicResource IconNext}" ToolTip="Next match (F3)" Click="SearchNext_Click"/>
+          <controls:IconButton Icon="{DynamicResource IconClose}" ToolTip="Close the search bar (Esc)" Click="SearchClose_Click"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -68,7 +68,7 @@
       <Border x:Name="BusyOverlay" Grid.ColumnSpan="4" Visibility="Collapsed" Background="#40000000">
         <Border Style="{DynamicResource Card}" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20,14">
           <StackPanel>
-            <TextBlock x:Name="BusyText" Text="Comparing ... " HorizontalAlignment="Center"/>
+            <TextBlock x:Name="BusyText" Text="Comparing..." HorizontalAlignment="Center"/>
             <ProgressBar IsIndeterminate="True" Width="180" Margin="0,10,0,0"/>
           </StackPanel>
         </Border>

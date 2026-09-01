@@ -20,9 +20,9 @@ public partial class DiffOptionsPanel : UserControl
         ArgumentNullException.ThrowIfNull(settings);
         _settings = settings;
         InitializeComponent();
-        foreach (var kind in Enum.GetValues<DiffAlgorithmKind>()) AlgorithmBox.Items.Add(kind. ToString());
-        foreach (var mode in Enum.GetValues<InlineDiffMode>()) InlineBox.Items.Add(mode. ToString());
-        foreach (var width in new[] { 1, 2, 3, 4, 6, 8, 12, 16 }) TabWidthBox. Items.Add(width);
+        foreach (var kind in Enum.GetValues<DiffAlgorithmKind>()) AlgorithmBox.Items.Add(kind.ToString());
+        foreach (var mode in Enum.GetValues<InlineDiffMode>()) InlineBox.Items.Add(mode.ToString());
+        foreach (var width in new[] { 1, 2, 3, 4, 6, 8, 12, 16 }) TabWidthBox.Items.Add(width);
         ReloadPresets();
         Load(settings.DiffOptions);
     }
@@ -40,13 +40,13 @@ public partial class DiffOptionsPanel : UserControl
         _suppress = true;
         Current = options.Clone();
         AlgorithmBox.SelectedItem = Current.Algorithm.ToString();
-        InlineBox.SelectedItem = Current.InlineMode. ToString();
-        TabWidthBox.SelectedItem = ClosestTabWidth(Current. TabWidth);
+        InlineBox.SelectedItem = Current.InlineMode.ToString();
+        TabWidthBox.SelectedItem = ClosestTabWidth(Current.TabWidth);
         MovesBox.IsChecked = Current.DetectMoves;
         LeadingBox.IsChecked = Current.IgnoreLeadingWhitespace;
         TrailingBox.IsChecked = Current.IgnoreTrailingWhitespace;
         RunsBox.IsChecked = Current.IgnoreWhitespaceRuns;
-        AllwhitespaceBox.IsChecked = Current.IgnoreAllWhitespace;
+        AllWhitespaceBox.IsChecked = Current.IgnoreAllWhitespace;
         TabsBox.IsChecked = Current.TreatTabsAsSpaces;
         CaseBox.IsChecked = Current.IgnoreCase;
         BlankLinesBox.IsChecked = Current.IgnoreBlankLines;
@@ -61,7 +61,7 @@ public partial class DiffOptionsPanel : UserControl
 
     private void ReloadPresets()
     {
-        suppress = true;
+        _suppress = true;
         PresetBox.Items.Clear();
         PresetBox.Items.Add("(current)");
         foreach (var preset in _settings.Presets) PresetBox.Items.Add(preset.Name);
@@ -71,7 +71,7 @@ public partial class DiffOptionsPanel : UserControl
 
     private void UpdateEnabledState()
     {
-        var all = AllwhitespaceBox.IsChecked == true;
+        var all = AllWhitespaceBox.IsChecked == true;
         LeadingBox.IsEnabled = !all;
         TrailingBox.IsEnabled = !all;
         RunsBox.IsEnabled = !all;
@@ -126,7 +126,7 @@ public partial class DiffOptionsPanel : UserControl
         var name = PresetNameBox.Text.Trim();
         if (name.Length == 0)
         {
-            MessageBox.Show(Window.GetWindow(this), "Type a name for the preset first.", "NaraDiff", MessageBoxButton.OK, MessageBoxImage. Information);
+            MessageBox.Show(Window.GetWindow(this), "Type a name for the preset first.", "NaraDiff", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         var preset = Current.Clone();

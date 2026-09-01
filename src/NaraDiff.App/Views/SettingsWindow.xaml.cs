@@ -31,18 +31,18 @@ public partial class SettingsWindow : Window
         _settings = settings;
         _snapshot = Copy(settings);
         InitializeComponent();
-        ThemeBox. Items.Add("Dark");
+        ThemeBox.Items.Add("Dark");
         ThemeBox.Items.Add("Light");
         ThemeBox.SelectedIndex = settings.Theme == ThemeKind.Light ? 1 : 0;
-        foreach (var family in Fonts.SystemFontFamilies.Select(item => item.Source).OrderBy(name => name, StringComparer.OrdinalIgnoreCase)) FontBox. Items.Add(family);
-        FontBox. Text = settings.EditorFontFamily;
+        foreach (var family in Fonts.SystemFontFamilies.Select(item => item.Source).OrderBy(name => name, StringComparer.OrdinalIgnoreCase)) FontBox.Items.Add(family);
+        FontBox.Text = settings.EditorFontFamily;
         foreach (var size in new[] { 10, 11, 12, 13, 14, 16, 18, 20 }) FontSizeBox.Items.Add(size);
         FontSizeBox.SelectedItem = (int)Math.Round(settings.EditorFontSize);
         if (FontSizeBox.SelectedItem is null) FontSizeBox.SelectedItem = 13;
-        AccessibleBox. IsChecked = settings.ColorBlindPalette;
-        LineNumbersBox. IsChecked = settings.ShowLineNumbers;
-        WhitespaceBox. IsChecked = settings.ShowWhitespace;
-        WordWrapBox. IsChecked = settings.WordWrap;
+        AccessibleBox.IsChecked = settings.ColorBlindPalette;
+        LineNumbersBox.IsChecked = settings.ShowLineNumbers;
+        WhitespaceBox.IsChecked = settings.ShowWhitespace;
+        WordWrapBox.IsChecked = settings.WordWrap;
         ConnectorsBox.IsChecked = settings.ShowConnectors;
         SyncScrollBox.IsChecked = settings.SynchronizeScrolling;
         foreach (var choice in EncodingCatalog.All) EncodingBox.Items.Add(choice);
@@ -52,7 +52,7 @@ public partial class SettingsWindow : Window
         foreach (var delay in new[] { 0, 100, 250, 400, 800, 1500 }) DebounceBox.Items.Add(delay);
         DebounceBox.SelectedItem = settings.DiffDebounceMilliseconds;
         if (DebounceBox.SelectedItem is null) DebounceBox.SelectedItem = 250;
-        WatchBox. IsChecked = settings.WatchFilesForChanges;
+        WatchBox.IsChecked = settings.WatchFilesForChanges;
         VersionText.Text = $"NaraDiff {Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0"}";
         _ready = true;
     }
@@ -62,7 +62,7 @@ public partial class SettingsWindow : Window
 
     private static AppSettings Copy(AppSettings settings) => new()
     {
-        Theme = settings. Theme,
+        Theme = settings.Theme,
         ColorBlindPalette = settings.ColorBlindPalette,
         EditorFontFamily = settings.EditorFontFamily,
         EditorFontSize = settings.EditorFontSize,
@@ -76,14 +76,14 @@ public partial class SettingsWindow : Window
     private void Appearance_Changed(object sender, RoutedEventArgs e)
     {
         if (!_ready) return;
-        settings. Theme = ThemeBox.SelectedIndex == 1 ? ThemeKind.Light : ThemeKind.Dark;
+        _settings.Theme = ThemeBox.SelectedIndex == 1 ? ThemeKind.Light : ThemeKind.Dark;
         _settings.ColorBlindPalette = AccessibleBox.IsChecked == true;
-        _settings.EditorFontFamily = string. IsNullOrWhiteSpace(FontBox. Text) ? "Consolas" : FontBox.Text;
+        _settings.EditorFontFamily = string.IsNullOrWhiteSpace(FontBox. Text) ? "Consolas" : FontBox.Text;
         _settings.EditorFontSize = FontSizeBox.SelectedItem is int size ? size : 13;
-        _settings.ShowLineNumbers = LineNumbersBox. IsChecked == true;
-        _settings.ShowWhitespace = WhitespaceBox. IsChecked == true;
-        _settings.WordWrap = WordWrapBox. IsChecked == true;
-        _settings.ShowConnectors = ConnectorsBox. IsChecked == true;
+        _settings.ShowLineNumbers = LineNumbersBox.IsChecked == true;
+        _settings.ShowWhitespace = WhitespaceBox.IsChecked == true;
+        _settings.WordWrap = WordWrapBox.IsChecked == true;
+        _settings.ShowConnectors = ConnectorsBox.IsChecked == true;
         _settings.SynchronizeScrolling = SyncScrollBox.IsChecked == true;
         ThemeService.Apply(_settings.Theme, _settings.ColorBlindPalette);
         SettingsApplied?.Invoke(this, EventArgs.Empty);
@@ -104,13 +104,13 @@ public partial class SettingsWindow : Window
     {
         _settings.Theme = _snapshot.Theme;
         _settings.ColorBlindPalette = _snapshot.ColorBlindPalette;
-        settings.EditorFontFamily = _snapshot.EditorFontFamily;
+        _settings.EditorFontFamily = _snapshot.EditorFontFamily;
         _settings.EditorFontSize = _snapshot.EditorFontSize;
         _settings.ShowLineNumbers = _snapshot.ShowLineNumbers;
         _settings. ShowWhitespace = _snapshot.ShowWhitespace;
         _settings.WordWrap = _snapshot.WordWrap;
         _settings.ShowConnectors = _snapshot.ShowConnectors;
-        settings.SynchronizeScrolling = _snapshot.SynchronizeScrolling;
+        _settings.SynchronizeScrolling = _snapshot.SynchronizeScrolling;
         ThemeService.Apply(_settings.Theme, _settings.ColorBlindPalette);
         SettingsApplied?.Invoke(this, EventArgs.Empty);
         DialogResult = false;

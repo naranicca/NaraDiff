@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using NaraDiff.App.Services;
 using NaraDiff.App.Views;
-using NaraDiff.Infrastructure.Logging
+using NaraDiff.Infrastructure.Logging;
 using NaraDiff.Infrastructure.Persistence;
 
 namespace NaraDiff.App;

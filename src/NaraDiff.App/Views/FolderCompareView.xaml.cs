@@ -52,12 +52,12 @@ public sealed class FolderRow
 /// </summary>
 public partial class FolderCompareView : UserControl, IComparisonView, IDisposable
 {
-    private static readonly (string Label, FolderContentMode Mode) [] ContentModes =
+    private static readonly (string Label, FolderContentMode Mode)[] ContentModes =
     [
         ("Size and time (fast)", FolderContentMode.SizeAndTime),
         ("Size only", FolderContentMode.SizeOnly),
         ("Full content (binary)", FolderContentMode.BinaryContent),
-        ("Text aware (diff options)", FolderContentMode. TextAware)
+        ("Text aware (diff options)", FolderContentMode.TextAware)
     ];
 
     private readonly FileLogger _logger;
@@ -72,19 +72,19 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(logger);
-        settings = settings;
-        logger = logger;
-        diffOptions = settings.DiffOptions.Sanitized();
+        _settings = settings;
+        _logger = logger;
+        _diffOptions = settings.DiffOptions.Sanitized();
         InitializeComponent();
-        suppressEvents = true;
+        _suppressEvents = true;
         foreach (var (label, _) in ContentModes) ContentModeBox.Items.Add(label);
         var options = settings.FolderOptions;
         ContentModeBox.SelectedIndex = Math.Max(0, Array.FindIndex(ContentModes, entry => entry.Mode == options.ContentMode));
-        RecursiveBox. IsChecked = options.Recursive;
-        HiddenBox. IsChecked = options.IncludeHidden;
-        CaseBox. IsChecked = options.CaseSensitiveNames;
+        RecursiveBox.IsChecked = options.Recursive;
+        HiddenBox.IsChecked = options.IncludeHidden;
+        CaseBox.IsChecked = options.CaseSensitiveNames;
         ExcludeBox.Text = string.Join(";", options.ExcludePatterns);
-        suppressEvents = false;
+        _suppressEvents = false;
     }
 
     public event EventHandler? TitleChanged;
@@ -100,7 +100,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         {
             var left = SafeName(LeftPathBox.Text);
             var right = SafeName(RightPathBox.Text);
-            return left.Length == 0 && right.Length == 0 ? "Folders" : $"{left} - {right}";
+            return left.Length == 0 && right.Length == 0 ? "Folders" : $"{left} — {right}";
         }
     }
 
@@ -129,7 +129,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         ArgumentNullException.ThrowIfNull(options);
         _diffOptions = options.Sanitized();
-        if (CurrentOptions().ContentMode == FolderContentMode.TextAware && result is not null) _= CompareAsync();
+        if (CurrentOptions().ContentMode == FolderContentMode.TextAware && _result is not null) _ = CompareAsync();
     }
 
     public Task RefreshAsync() => CompareAsync();
@@ -156,18 +156,18 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         if (_disposed) return;
         _disposed = true;
-        comparison?.Cancel();
-        comparison?.Dispose();
+        _comparison?.Cancel();
+        _comparison?.Dispose();
     }
 
     private FolderCompareOptions CurrentOptions() => new()
     {
-        Recursive = RecursiveBox. IsChecked == true,
-        IncludeHidden = HiddenBox. IsChecked == true,
+        Recursive = RecursiveBox.IsChecked == true,
+        IncludeHidden = HiddenBox.IsChecked == true,
         CaseSensitiveNames = CaseBox.IsChecked == true,
         ContentMode = ContentModes[Math.Max(0, ContentModeBox.SelectedIndex)].Mode,
-        ExcludePatterns = [ .. ExcludeBox.Text.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions. TrimEntries)],
-        TimeToleranceSeconds = _settings.FolderOptions. TimeToleranceSeconds,
+        ExcludePatterns = [..ExcludeBox.Text.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)],
+        TimeToleranceSeconds = _settings.FolderOptions.TimeToleranceSeconds,
         MaxContentCompareBytes = _settings.FolderOptions.MaxContentCompareBytes
     };
 
@@ -194,7 +194,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var progress = new Progress<string>(path => SetFooter($"Scanning {path}"));
         try
         {
-            result = await DirectoryComparer.CompareAsync(left, right, options, _diffOptions, progress, source.Token);
+            _result = await DirectoryComparer.CompareAsync(left, right, options, _diffOptions, progress, source.Token);
             RebuildTree();
             TitleChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -204,7 +204,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         }
         catch (Exception ex)
         {
-            logger.Error("folder-compare", ex);
+            _logger.Error("folder-compare", ex);
             SetFooter($"The folders could not be compared: {ex.Message}");
         }
         finally
@@ -251,11 +251,11 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             Entry = entry,
             Name = entry.Name,
             StatusText = StatusLabel(entry.Status),
-            TypeText = entry.IsDirectory ? "folder" : entry.Extension. TrimStart('.'),
+            TypeText = entry.IsDirectory ? "folder" : entry.Extension.TrimStart('.'),
             StatusFill = entry.Status == FolderEntryStatus.Same ? Brushes.Transparent : palette.FillFor(entry.Status),
             StatusStroke = entry.Status == FolderEntryStatus.Same ? ThemeService.Brush("TextDisabled") : palette.StrokeFor(entry.Status),
-            LeftSize = entry.Left is null || entry.IsDirectory ? string.Empty : $"{entry.LeftLength:No}",
-            RightSize = entry.Right is null || entry.IsDirectory ? string.Empty : $"{entry.RightLength:No}",
+            LeftSize = entry.Left is null || entry.IsDirectory ? string.Empty : $"{entry.LeftLength:N0}",
+            RightSize = entry.Right is null || entry.IsDirectory ? string.Empty : $"{entry.RightLength:N0}",
             LeftModified = entry.Left is null ? string.Empty : entry.Left.LastWriteTimeUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
             RightModified = entry.Right is null ? string.Empty : entry.Right.LastWriteTimeUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
             Tooltip = entry.Message is null ? entry.RelativePath : $"{entry.RelativePath}\n{entry.Message}"
@@ -297,7 +297,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         var dialog = new OpenFolderDialog { Title = "Select a folder" };
         if (Directory.Exists(target.Text)) dialog.InitialDirectory = target.Text;
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true) target. Text = dialog.FolderName;
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true) target.Text = dialog.FolderName;
     }
 
     private async void Compare_Click(object sender, RoutedEventArgs e) => await CompareAsync();
@@ -356,9 +356,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private static IEnumerable<FolderRow> Flatten(IEnumerable<FolderRow> rows)
     {
         foreach (var row in rows)
-
-        yield return row;
-        foreach (var child in Flatten(row.Children)) yield return child;
+        {
+            yield return row;
+            foreach (var child in Flatten(row.Children)) yield return child;
+        }
     }
 
     private void SelectRow(FolderRow row)
@@ -399,7 +400,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var entry = row.Entry;
         if (entry.Status == FolderEntryStatus.TypeConflict)
         {
-            MessageBox. Show(Window.GetWindow(this), "One side is a file and the other a folder, so they cannot be compared as text.",
+            MessageBox.Show(Window.GetWindow(this), "One side is a file and the other a folder, so they cannot be compared as text.",
                 "NaraDiff", MessageBoxButton.OK, MessageBoxImage. Information);
             return;
         }
@@ -415,7 +416,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             SetFooter("Compare the folders before synchronising them.");
             return;
         }
-        var window = new SyncPreviewWindow(_result, _settings.SyncOptions, logger) { Owner = Window.GetWindow(this) };
+        var window = new SyncPreviewWindow(_result, _settings.SyncOptions, _logger) { Owner = Window.GetWindow(this) };
         if (window.ShowDialog() != true) return;
         _settings.SyncOptions = window.ResultOptions;
         SetFooter(window.Summary);

@@ -110,7 +110,7 @@ public partial class SyncPreviewWindow : Window
                        (_plan.DeleteCount > 0 ? $"\n{_plan.DeleteCount:N0} files or folders will be deleted." : string.Empty);
         if (MessageBox.Show(this, question, "NaraDiff", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
         RunButton.IsEnabled = false;
-        StatusText.Text = "Running ... ";
+        StatusText.Text = "Running...";
         try
         {
             var report = await new DirectorySyncExecutor().ExecuteAsync(_plan, allowDeletions, new Progress<string>(path => StatusText.Text = path));

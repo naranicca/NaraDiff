@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -50,7 +49,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         RightHeader.BrowseRequested += (_, _) => Browse(MergePane.Right);
         LeftHeader.ReloadRequested += async (_, _) => await ReloadAsync(MergePane.Left);
         BaseHeader.ReloadRequested += async (_, _) => await ReloadAsync(MergePane.Base);
-        RightHeader.ReloadRequested += async (_,_) => await ReloadAsync(MergePane.Right);
+        RightHeader.ReloadRequested += async (_, _) => await ReloadAsync(MergePane.Right);
         LeftHeader.PathCommitted += async (_, path) => await LoadAsync(MergePane.Left, path);
         BaseHeader.PathCommitted += async (_, path) => await LoadAsync(MergePane.Base, path);
         RightHeader.PathCommitted += async (_, path) => await LoadAsync(MergePane.Right, path);
@@ -65,7 +64,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         LeftConnector.Action += (_, e) => ResolveFromConnector(e, MergePane.Left);
         RightConnector.Action += (_, e) => ResolveFromConnector(e, MergePane.Right);
         LeftConnector.LinkActivated += (_, link) => { if (link.Tag is MergeRegion region) GoToRegion(region); };
-        RightConnector.LinkActivated += (_, link) => { if (link. Tag is MergeRegion region) GoToRegion(region); };
+        RightConnector.LinkActivated += (_, link) => { if (link.Tag is MergeRegion region) GoToRegion(region); };
         Ruler.Editor = BaseEditor;
         Ruler.LineRequested += (_, line) => ScrollAllToBaseLine(line);
 
@@ -112,11 +111,11 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
 
     public bool CanApplyChanges => true;
 
-    public async Task OpenAsync(string? basePath, string? leftPath, string? rightPath, string? outputpath = null)
+    public async Task OpenAsync(string? basePath, string? leftPath, string? rightPath, string? outputPath = null)
     {
         if (!string.IsNullOrWhiteSpace(basePath)) await LoadAsync(MergePane.Base, basePath!);
         if (!string.IsNullOrWhiteSpace(leftPath)) await LoadAsync(MergePane.Left, leftPath!);
-        if (Istring. IsNullOrWhiteSpace(rightPath)) await LoadAsync(MergePane.Right, rightPath!);
+        if (!string. IsNullOrWhiteSpace(rightPath)) await LoadAsync(MergePane.Right, rightPath!);
         OutputPathBox.Text = string.IsNullOrWhiteSpace(outputPath) ? leftPath ?? string.Empty : outputPath!;
         await MergeAsync();
     }
@@ -149,7 +148,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
             var dialog = new SaveFileDialog { Title = "Save the merged result" };
             if (dialog.ShowDialog(Window.GetWindow(this)) != true) return false;
             path = dialog.FileName;
-            OutputPathBox. Text = path;
+            OutputPathBox.Text = path;
         }
         if (_merge is not null && _merge.UnresolvedConflictCount > 0 &&
             MessageBox.Show(Window.GetWindow(this),
@@ -186,7 +185,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
 
     public void ApplyToLeft() => Resolve(CurrentRegion(), MergeResolution.Left);
 
-    public void ApplyAllToRight()=> ResolveAll(MergeResolution.Right);
+    public void ApplyAllToRight() => ResolveAll(MergeResolution.Right);
 
     public void ApplyAllToLeft() => ResolveAll(MergeResolution.Left);
 
@@ -210,7 +209,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        disposed = true;
+        _disposed = true;
         ThemeService.Changed -= OnThemeChanged;
         _work?.Cancel();
         _work?.Dispose();
@@ -226,9 +225,9 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
 
     private DiffTextEditor EditorFor(MergePane pane) => pane switch
     {
-        MergePane. Left => LeftEditor,
+        MergePane.Left => LeftEditor,
         MergePane.Base => BaseEditor,
-        MergePane. Right => RightEditor,
+        MergePane.Right => RightEditor,
         _ => ResultEditor
     };
 
@@ -328,7 +327,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     {
         if (_merge is null) return;
         var fallback = BaseEditor.LineEnding is LineEndingKind.None or LineEndingKind.Mixed ? LineEndingKind.Lf : BaseEditor.LineEnding;
-        _document = merge.Build(fallback);
+        _document = _merge.Build(fallback);
         var offset = ResultEditor.TextArea.TextView.ScrollOffset.Y;
         _loading = true;
         ResultEditor.SetContent(LineEndings.Join(_document.Lines));
@@ -337,7 +336,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         _resultEdited = false;
     }
 
-    AttributeProviderAttribute UpdateVisuals()
+    private void UpdateVisuals()
     {
         if (_merge is null) return;
         var palette = ThemeService.Palette;
@@ -361,7 +360,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
                 RightCount = region.BaseCount,
                 Fill = fill,
                 Stroke = stroke,
-                AllowToRight = region.LeftCount > 0 || region. IsConflict,
+                AllowToRight = region.LeftCount > 0 || region.IsConflict,
                 IsConflict = unresolved,
                 Tooltip = Describe(region, "left"),
                 Tag = region
@@ -413,7 +412,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     {
         if (_merge is null || _merge.Regions.Count == 0) return null;
         var baseLine = CurrentBaseLine();
-        return _merge.Regions.FirstOrDefault(region => region.Kind != MergeRegionkind.Unchanged && baseLine >= region.BaseStart && baseLine < Math.Max(region.BaseStart + 1, region.BaseEnd))
+        return _merge.Regions.FirstOrDefault(region => region.Kind != MergeRegionKind.Unchanged && baseLine >= region.BaseStart && baseLine < Math.Max(region.BaseStart + 1, region.BaseEnd))
                ?? _merge.Regions.FirstOrDefault(region => region.Kind != MergeRegionKind.Unchanged && region.BaseStart >= baseLine)
                ?? _merge.Regions.LastOrDefault(region => region.Kind != MergeRegionKind.Unchanged);
     }
@@ -432,7 +431,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         if (_merge is null || _document is null) return resultLine;
         foreach (var region in _merge.Regions)
         {
-            if ( !_document.RegionRanges.TryGetValue(region.Index, out var range)) continue;
+            if (!_document.RegionRanges.TryGetValue(region.Index, out var range)) continue;
             if (resultLine >= range.Start && resultLine < range.Start + Math.Max(1, range.Count)) return region.BaseStart;
         }
         return resultLine;
@@ -464,7 +463,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
             SetNotice("There are no conflicts to resolve.");
             return;
         }
-        if (MessageBox.Show(Window.GetWindow(this), $"Resolve {conflicts.Count} conflicts with the {resolution. ToString().ToLowerInvariant()} version?",
+        if (MessageBox.Show(Window.GetWindow(this), $"Resolve {conflicts.Count} conflicts with the {resolution.ToString().ToLowerInvariant()} version?",
                 "NaraDiff", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
         if (!ConfirmResultOverwrite()) return;
         foreach (var region in conflicts) region.Resolution = resolution;
@@ -474,7 +473,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
 
     private bool ConfirmResultOverwrite()
     {
-        if ( !_resultEdited) return true;
+        if (!_resultEdited) return true;
         return MessageBox.Show(Window.GetWindow(this),
             "The merged result was edited by hand. Applying a resolution rebuilds it and discards those edits. Continue?",
             "NaraDiff", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK;
@@ -506,7 +505,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         BaseEditor.MoveCaretToLine(region.BaseStart);
         LeftEditor.ScrollToLineIndex(region.LeftStart);
         RightEditor.ScrollToLineIndex(region.RightStart);
-        if (_document is not null && _document.RegionRanges. TryGetValue(region. Index, out var range)) ResultEditor.ScrollToLineIndex(range.Start);
+        if (_document is not null && _document.RegionRanges.TryGetValue(region. Index, out var range)) ResultEditor.ScrollToLineIndex(range.Start);
         RefreshConnectors();
         UpdateFooter();
     }
@@ -537,13 +536,13 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         var sourceLine = source.TextArea.TextView.ScrollOffset.Y / height;
         double baseLine;
         if (ReferenceEquals(source, BaseEditor)) baseLine = sourceLine;
-        else if (ReferenceEquals(source, LeftEditor)) baseLine = merge.LeftDiff.MapRightToLeft(sourceLine);
-        else if (ReferenceEquals(source, RightEditor)) baseLine = merge.RightDiff.MapRightToLeft(sourceLine);
+        else if (ReferenceEquals(source, LeftEditor)) baseLine = _merge.LeftDiff.MapRightToLeft(sourceLine);
+        else if (ReferenceEquals(source, RightEditor)) baseLine = _merge.RightDiff.MapRightToLeft(sourceLine);
         else baseLine = ResultLineToBase((int)sourceLine);
         var targets = new List<(DiffTextEditor Editor, double Offset)>(3);
         if (!ReferenceEquals(source, BaseEditor)) targets.Add((BaseEditor, Math.Max(0, baseLine * BaseEditor.LineHeight)));
-        if (!ReferenceEquals(source, LeftEditor)) targets.Add((LeftEditor, Math.Max(0, merge.LeftDiff.MapLeftToRight(baseLine) * LeftEditor.LineHeight)));
-        if (!ReferenceEquals(source, RightEditor)) targets.Add((RightEditor, Math.Max(0, merge.RightDiff.MapLeftToRight(baseLine) * RightEditor.LineHeight)));
+        if (!ReferenceEquals(source, LeftEditor)) targets.Add((LeftEditor, Math.Max(0, _merge.LeftDiff.MapLeftToRight(baseLine) * LeftEditor.LineHeight)));
+        if (!ReferenceEquals(source, RightEditor)) targets.Add((RightEditor, Math.Max(0, _merge.RightDiff.MapLeftToRight(baseLine) * RightEditor.LineHeight)));
         var pending = targets.Where(target => Math.Abs(target.Editor.TextArea.TextView.ScrollOffset.Y - target.Offset) >= 1).ToList();
         if (pending.Count == 0) return;
         BeginProgrammaticScroll();
@@ -580,17 +579,17 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     {
         if (_merge is null)
         {
-            FooterText. Text = "Load a base file and the two variants to start the merge.";
+            FooterText.Text = "Load a base file and the two variants to start the merge.";
             return;
         }
         var conflicts = _merge.ConflictCount;
         var unresolved = _merge.UnresolvedConflictCount;
-        ConflictChipText. Text = conflicts == 0 ? "no conflicts" : $"{unresolved} of {conflicts} conflicts open";
+        ConflictChipText.Text = conflicts == 0 ? "no conflicts" : $"{unresolved} of {conflicts} conflicts open";
         StatusText = $"{_merge.AutomaticMergeCount} automatic merges, {conflicts} conflicts, {unresolved} unresolved" +
                      (_resultEdited ? ", result edited by hand" : string.Empty);
         FooterText.Text = $"base line {CurrentBaseLine() + 1} of {Math.Max(1, BaseEditor.DocumentLineCount)}  ·  result {Math.Max(1, ResultEditor.DocumentLineCount)} lines" +
                           (_resultEdited ? "  ·  edited by hand" : string.Empty);
-        FooterRightText.Text = $"{_merge.Regions.Count(region => region.Kind != MergeRegionKind.Unchanged)} regions . {_options.Describe()}";
+        FooterRightText.Text = $"{_merge.Regions.Count(region => region.Kind != MergeRegionKind.Unchanged)} regions  ·  {_options.Describe()}";
         StatusChanged?.Invoke(this, EventArgs.Empty);
     }
 
