@@ -50,6 +50,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         _logger = logger;
         _options = settings.DiffOptions.Sanitized();
         InitializeComponent();
+        LeftEditor.PlaceScrollBarOnTheLeft();
 
         LeftHeader.BrowseRequested += (_, _) => Browse(true);
         RightHeader.BrowseRequested += (_, _) => Browse(false);

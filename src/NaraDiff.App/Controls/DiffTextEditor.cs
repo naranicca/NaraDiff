@@ -41,6 +41,19 @@ public sealed class DiffTextEditor : TextEditor
         SizeChanged += (_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Moves this editor's vertical scroll bar from its usual right edge to the left edge, so the
+    /// right edge stays free for the connector ribbon and the diff block backgrounds are not clipped
+    /// underneath the scroll bar. Mirrors the editor's own layout (which swaps the scroll bar and the
+    /// text area to the other side of that layout) and then mirrors the text area back, so the text,
+    /// the line numbers and the diff backgrounds keep reading left to right.
+    /// </summary>
+    public void PlaceScrollBarOnTheLeft()
+    {
+        FlowDirection = FlowDirection.RightToLeft;
+        TextArea.FlowDirection = FlowDirection.LeftToRight;
+    }
+    
     /// <summary>Raised when the visible region changed and the connectors must be recalculated.</summary>
     public event EventHandler? ViewChanged;
 
