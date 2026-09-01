@@ -221,4 +221,4 @@ The comparison panes are split evenly and cannot be resized against each other.
 
 ## License
 
-GPL-3.0-only. See [LICENSE] (LICENSE).
+GPL-3.0-only. See [LICENSE](LICENSE).
