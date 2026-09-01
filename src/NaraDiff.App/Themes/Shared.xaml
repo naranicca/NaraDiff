@@ -345,6 +345,19 @@
     </Setter>
   </Style>
 
+  <!-- The trough pages the view; it is transparent but still hit testable. -->
+  <Style x:Key="ScrollBarTrough" TargetType="RepeatButton">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="IsTabStop" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RepeatButton">
+          <Border Background="Transparent"/>
+      </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <Style TargetType="ScrollBar">
     <Setter Property="Width" Value="10"/>
     <Setter Property="Background" Value="Transparent"/>
@@ -352,21 +365,23 @@
       <Setter.Value>
         <ControlTemplate TargetType="ScrollBar">
           <Grid Background="{TemplateBinding Background}">
+            <!-- A vertical track grows downwards, so its direction is reversed; a horizontal track
+                 grows to the right and must not be, otherwise dragging right scrolls left. -->
             <Track x:Name="PART_Track" IsDirectionReversed="True">
               <Track.DecreaseRepeatButton>
-                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" MinWidth="0" Height="0"/>
+                <RepeatButton Command="ScrollBar.PageUpCommand" Style="{StaticResource ScrollBarTrough}"/>
               </Track.DecreaseRepeatButton>
               <Track.Thumb>
-                <Thumb>
+                <Thumb MinWidth="6" MinHeight="6">
                   <Thumb.Template>
                     <ControlTemplate TargetType="Thumb">
-                      <Border Background="{DynamicResource BorderStrong}" CornerRadius="5" Margin="2,0"/>
+                      <Border Background="{DynamicResource BorderStrong}" CornerRadius="5" Margin="2"/>
                     </ControlTemplate>
                   </Thumb.Template>
                 </Thumb>
               </Track.Thumb>
               <Track.IncreaseRepeatButton>
-                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" MinWidth="0" Height="0"/>
+                <RepeatButton Command="ScrollBar.PageDownCommand" Style="{StaticResource ScrollBarTrough}"/>
               </Track.IncreaseRepeatButton>
             </Track>
           </Grid>
@@ -374,6 +389,7 @@
             <Trigger Property="Orientation" Value="Horizontal">
               <Setter Property="Height" Value="10"/>
               <Setter Property="Width" Value="Auto"/>
+              <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
