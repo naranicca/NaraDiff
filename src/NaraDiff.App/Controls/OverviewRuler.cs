@@ -83,7 +83,7 @@ public sealed class OverviewRuler : FrameworkElement
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonDown(e);
-        dragging = true;
+        _dragging = true;
         CaptureMouse();
         RequestLine(e.GetPosition(this).Y);
         e.Handled = true;
@@ -98,7 +98,7 @@ public sealed class OverviewRuler : FrameworkElement
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
-        dragging = false;
+        _dragging = false;
         ReleaseMouseCapture();
     }
 

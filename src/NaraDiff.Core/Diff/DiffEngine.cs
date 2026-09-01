@@ -37,7 +37,7 @@ public static class DiffEngine
         var map = new List<int>(lines.Count);
         for (var i = 0; i < lines.Count; i++)
         {
-            if ((i & ØxFFF) == 0) cancellationToken.ThrowIfCancellationRequested();
+            if ((i & 0xFFF) == 0) cancellationToken.ThrowIfCancellationRequested();
             var line = lines[i];
             if (keys.HasIgnoreRules && keys.IsIgnored(line)) continue;
             var key = keys.BuildKey(line);

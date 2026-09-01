@@ -243,7 +243,7 @@ public sealed class ConnectorRibbon : FrameworkElement
         _hoveredLink = link;
         Cursor = button >= 0 || link is not null ? Cursors.Hand : Cursors.Arrow;
         ToolTip = button >= 0
-            ? _buttons[button].Direction == ConnectorDirection.ToRight ? "Copy this change to the right (Alt+Right)" : "Copy this to the left (Alt+Left)"
+            ? _buttons[button].Direction == ConnectorDirection.ToRight ? "Copy this change to the right (Alt+Right)" : "Copy this change to the left (Alt+Left)"
             : link?.Tooltip;
         InvalidateVisual();
     }

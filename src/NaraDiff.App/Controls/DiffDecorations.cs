@@ -33,7 +33,7 @@ public sealed class DiffDecorationSet
 
     public void Set(int line, LineDecoration decoration) => _lines[line] = decoration;
 
-    public bool TryGet(int line, out LineDecoration? decoration) => _lines. TryGetValue(line, out decoration);
+    public bool TryGet(int line, out LineDecoration? decoration) => _lines.TryGetValue(line, out decoration);
 
     /// <summary>Builds the decorations of one side of a two way comparison.</summary>
     public static DiffDecorationSet FromDiff(DiffResult result, bool leftSide, DiffPalette palette)

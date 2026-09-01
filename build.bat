@@ -10,11 +10,11 @@ echo [1/5] Restoring packages...
 if errorlevel 1 exit /b %errorlevel%
 
 echo [2/5] Building Release configuration...
-"%DOTNET%" build NaraDiff.sln -- configuration Release --no-restore
+"%DOTNET%" build NaraDiff.sln --configuration Release --no-restore
 if errorlevel 1 exit /b %errorlevel%
 
 echo [3/5] Running tests...
-"%DOTNET%" test NaraDiff.sln -- configuration Release --no-build
+"%DOTNET%" test NaraDiff.sln --configuration Release --no-build
 if errorlevel 1 exit /b %errorlevel%
 
 echo [4/5] Preparing release directory...

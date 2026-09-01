@@ -30,14 +30,14 @@ public sealed class DiffTextEditor : TextEditor
         VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto;
         BorderThickness = new Thickness(0);
         Padding = new Thickness(2, 2, 0, 2);
-        TextArea. TextView.BackgroundRenderers.Add(_renderer);
+        TextArea.TextView.BackgroundRenderers.Add(_renderer);
         TextArea.Caret.PositionChanged += (_, _) =>
         {
             _renderer.CurrentLine = TextArea.Caret.Line - 1;
             Redraw();
             CaretLineChanged?.Invoke(this, EventArgs.Empty);
         };
-        TextArea.TextView.ScrolloffsetChanged +=(_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
+        TextArea.TextView.ScrollOffsetChanged += (_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
         SizeChanged += (_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -67,7 +67,7 @@ public sealed class DiffTextEditor : TextEditor
 
     public DiffDecorationSet SearchMatches
     {
-        get =>_renderer.SearchMatches;
+        get => _renderer.SearchMatches;
         set
         {
             _renderer.SearchMatches = value;
@@ -100,11 +100,11 @@ public sealed class DiffTextEditor : TextEditor
         TextArea.SelectionBorder = null;
         TextArea.SelectionForeground = null;
         TextArea.Caret.CaretBrush = ThemeService.Brush("EditorForeground");
-        renderer.CurrentLineBrush = ThemeService.Brush("EditorCurrentLine");
+        _renderer.CurrentLineBrush = ThemeService.Brush("EditorCurrentLine");
         Redraw();
     }
 
-    public void Redraw() => TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Redering.KnownLayer.Background);
+    public void Redraw() => TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
 
     /// <summary>Replaces the whole document without adding an undo step for the load.</summary>
     public void SetContent(string text)
@@ -134,7 +134,7 @@ public sealed class DiffTextEditor : TextEditor
         }
     }
 
-    /// <summary>Bottom of a line range, so a block of zero lines collapses to a single position .</summary>
+    /// <summary>Bottom of a line range, so a block of zero lines collapses to a single position.</summary>
     public double GetLineBottom(int lineIndex) => GetLineTop(lineIndex + 1);
 
     public double LineHeight => TextArea.TextView.DefaultLineHeight;
@@ -144,7 +144,7 @@ public sealed class DiffTextEditor : TextEditor
         get
         {
             var height = TextArea.TextView.DefaultLineHeight;
-            return height <= 0 ? 0 : (int)(TextArea.TextView.Scroll0ffset.Y / height);
+            return height <= 0 ? 0 : (int)(TextArea.TextView.ScrollOffset.Y / height);
         }
     }
 
@@ -156,6 +156,7 @@ public sealed class DiffTextEditor : TextEditor
             return height <= 0 ? 1 : Math.Max(1, (int)(TextArea.TextView.ActualHeight / height));
         }
     }
+
     public void ScrollToLineIndex(int lineIndex, bool center = true)
     {
         var count = Math.Max(1, DocumentLineCount);
@@ -163,6 +164,7 @@ public sealed class DiffTextEditor : TextEditor
         if (center) ScrollTo(line, 0);
         else ScrollToVerticalOffset(Math.Max(0, (line - 1) * LineHeight));
     }
+
     public void MoveCaretToLine(int lineIndex)
     {
         var count = Math.Max(1, DocumentLineCount);
