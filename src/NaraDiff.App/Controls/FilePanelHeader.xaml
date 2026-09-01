@@ -1,0 +1,34 @@
+<UserControl x:Class="NaraDiff.App.Controls.FilePaneHeader"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:NaraDiff.App.Controls"
+             FontFamily="Segoe UI" FontSize="12" UseLayoutRounding="True" SnapsToDevicePixels="True">
+  <Border Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
+    <Grid>
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Grid Grid.Row="0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="RoleText" Text="Left" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="2,0,8,0"/>
+        <TextBox x:Name="PathBox" Grid.Column="1" ToolTip="File path; press Enter to load" KeyDown="PathBox_KeyDown" LostKeyboardFocus="PathBox_LostFocus"/>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
+          <controls:IconButton x:Name="BrowseButton" Icon="{DynamicResource IconOpen}" ToolTip="Open a file (Ctrl+0)" Click="Browse_Click"/>
+          <controls:IconButton x:Name="ReloadButton" Icon="{DynamicResource IconRefresh}" ToolTip="Reload from disk (F5)" Click="Reload_Click"/>
+          <controls:IconButton x:Name="SaveButton" Icon="{DynamicResource IconSave}" ToolTip="Save this side (Ctrl+S)" Click="Save_Click"/>
+        </StackPanel>
+      </Grid>
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,0">
+        <ComboBox x:Name="EncodingBox" Width="150" ToolTip="Text encoding used to read and write this file" SelectionChanged="EncodingBox_SelectionChanged"/>
+        <ComboBox x:Name="LineEndingBox" Width="104" Margin="6,0,0,0" ToolTip="Line ending written when saving" SelectionChanged="LineEndingBox_SelectionChanged"/>
+        <Border x:Name="ReadOnlyChip" Style="{DynamicResource Chip}" Margin="6,0,0,0" Visibility="Collapsed">
+          <TextBlock Text="read-only" Foreground="{DynamicResource TextSecondary}"/>
+        </Border>
+        <Border x:Name="ModifiedChip" Style="{DynamicResource Chip}" Margin="6,0,0,0" Visibility="Collapsed">
+          <TextBlock Text="modified" Foreground="{DynamicResource Accent}" FontWeight="SemiBold"/>
+        </Border>
+        <TextBlock x:Name="DetailText" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

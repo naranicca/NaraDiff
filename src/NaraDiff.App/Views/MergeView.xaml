@@ -1,0 +1,100 @@
+<UserControl x:Class="NaraDiff.App.Views.MergeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:NaraDiff.App.Controls"
+             FontFamily="Segoe UI" FontSize="12" UseLayoutRounding="True" SnapsToDevicePixels="True"
+             Background="{DynamicResource Surface}">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="3*" MinHeight="120"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="2*" MinHeight="80"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="52"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
+      </Grid.ColumnDefinitions>
+      <controls:FilePaneHeader x:Name="LeftHeader" Grid.Column="0" Role="Left (mine)"/>
+      <Border Grid.Column="1" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1"/>
+      <controls:FilePaneHeader x:Name="BaseHeader" Grid.Column="2" Role="Base"/>
+      <Border Grid.Column="3" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1"/>
+      <controls:FilePaneHeader x:Name="RightHeader" Grid.Column="4" Role="Right (theirs)"/>
+      <Border Grid.Column="5" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1"/>
+    </Grid>
+
+    <Border Grid.Row="1" Background="{DynamicResource SurfaceRaised}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,5">
+      <WrapPanel>
+        <Border Style="{DynamicResource Chip}">
+          <TextBlock x:Name="ConflictChipText" Text="0 conflicts" FontWeight="SemiBold"/>
+        </Border>
+        <controls:IconButton Icon="{DynamicResource IconPrevious}" Label="Previous conflict" Margin="8,0,0,0" Click="PreviousConflict_Click" ToolTip="Go to the previous conflict (Shift+F8)"/>
+        <controls:IconButton Icon="{DynamicResource IconNext}" Label="Next conflict" Click="NextConflict_Click" ToolTip="Go to the next conflict (F8)"/>
+        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+        <Button Content="Take left" Margin="2,0,0,0" Click="TakeLeft_Click" ToolTip="Resolve the current region with the left version (Alt+1)"/>
+        <Button Content="Take right" Margin="6,0,0,0" Click="TakeRight_Click" ToolTip="Resolve the current region with the right version (Alt+3)"/>
+        <Button Content="Left then right" Margin="6,0,0,0" Click="TakeBoth_Click" ToolTip="Keep both versions, left first (Alt+B)"/>
+        <Button Content="Right then left" Margin="6,0,0,0" Click="TakeBothReversed_Click"/>
+        <Button Content="Back to base" Margin="6,0,0,0" Click="TakeBase_Click" ToolTip="Discard both changes and keep the base version (Alt+2)"/>
+        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+        <Button Content="All conflicts: left" Margin="2,0,0,0" Click="AllLeft_Click"/>
+        <Button Content="All conflicts: right" Margin="6,0,0,0" Click="AllRight_Click"/>
+        <Button Content="Regenerate result" Margin="6,0,0,0" Click="Regenerate_Click" ToolTip="Rebuild the merged text from the current resolutions"/>
+      </WrapPanel>
+    </Border>
+
+    <Border x:Name="NoticeBar" Grid.Row="2" Visibility="Collapsed" Background="{DynamicResource SurfaceRaised}"
+            BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="10,6">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="NoticeText" VerticalAlignment="Center" TextWrapping="Wrap"/>
+        <controls:IconButton Grid.Column="1" Icon="{DynamicResource IconClose}" ToolTip="Dismiss" Click="NoticeDismiss_Click"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="3">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="52"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
+      </Grid.ColumnDefinitions>
+      <controls:DiffTextEditor x:Name="LeftEditor" Grid.Column="0"/>
+      <controls:ConnectorRibbon x:Name="LeftConnector" Grid.Column="1"/>
+      <controls:DiffTextEditor x:Name="BaseEditor" Grid.Column="2"/>
+      <controls:ConnectorRibbon x:Name="RightConnector" Grid.Column="3"/>
+      <controls:DiffTextEditor x:Name="RightEditor" Grid.Column="4"/>
+      <controls:OverviewRuler x:Name="Ruler" Grid.Column="5"/>
+    </Grid>
+
+    <GridSplitter Grid.Row="4" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                  Background="{DynamicResource Border}" ShowsPreview="True" ResizeBehavior="PreviousAndNext"/>
+
+    <Grid Grid.Row="5">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Border Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="Merged result" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="2,0,8,0"/>
+          <TextBox x:Name="OutputPathBox" Grid.Column="1" ToolTip="Where the merged file is written"/>
+          <controls:IconButton Grid.Column="2" Icon="{DynamicResource IconOpen}" ToolTip="Choose the output file" Click="BrowseOutput_Click"/>
+          <controls:IconButton Grid.Column="3" Icon="{DynamicResource IconSave}" ToolTip="Save the merged result (Ctrl+S)" Click="SaveResult_Click"/>
+        </Grid>
+      </Border>
+      <controls:DiffTextEditor x:Name="ResultEditor" Grid.Row="1"/>
+    </Grid>
+
+    <Border Grid.Row="6" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,5">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="FooterText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="FooterRightText" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

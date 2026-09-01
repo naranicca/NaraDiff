@@ -1,0 +1,119 @@
+<UserControl x:Class="NaraDiff.App.Views.FolderCompareView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:NaraDiff.App.Controls"
+             FontFamily="Segoe UI" FontSize="12" UseLayoutRounding="True" SnapsToDevicePixels="True"
+             Background="{DynamicResource Surface}">
+  <UserControl.Resources>
+    <Style x:Key="ColumnHeader" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+  </UserControl.Resources>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Left" Foreground="{DynamicResource TextSecondary}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="2,0,8,0"/>
+        <TextBox x:Name="LeftPathBox" Grid.Column="1" ToolTip="Left folder"/>
+        <controls:IconButton Grid.Column="2" Icon="{DynamicResource IconOpen}" ToolTip="Select the left folder" Click="BrowseLeft_Click"/>
+        <TextBlock Grid.Column="3" Text="Right" Foreground="{DynamicResource TextSecondary}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="14,0,8,0"/>
+        <TextBox x:Name="RightPathBox" Grid.Column="4" ToolTip="Right folder"/>
+        <controls:IconButton Grid.Column="5" Icon="{DynamicResource IconOpen}" ToolTip="Select the right folder" Click="BrowseRight_Click"/>
+        <StackPanel Grid.Column="6" Orientation="Horizontal" Margin="10,0,0,0">
+          <Button x:Name="CompareButton" Content="Compare" Style="{DynamicResource PrimaryButton}" Click="Compare_Click"/>
+          <Button x:Name="CancelButton" Content="Cancel" Margin="6,0,0,0" IsEnabled="False" Click="Cancel_Click"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
+      <WrapPanel>
+        <TextBlock Text="Compare by" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="2,0,6,0"/>
+        <ComboBox x:Name="ContentModeBox" Width="210" SelectionChanged="Option_Changed"
+                  ToolTip="How file equality is decided"/>
+        <CheckBox x:Name="RecursiveBox" Content="Include subfolders" Margin="14,0,0,0" IsChecked="True" Click="Option_Changed"/>
+        <CheckBox x:Name="HiddenBox" Content="Include hidden files" Margin="14,0,0,0" Click="Option_Changed"/>
+        <CheckBox x:Name="CaseBox" Content="File names are case sensitive" Margin="14,0,0,0" Click="Option_Changed"/>
+        <CheckBox x:Name="OnlyDifferencesBox" Content="Only differences" Margin="14,0,0,0" Click="Filter_Changed"
+                  ToolTip="Hide entries that are identical on both sides"/>
+        <TextBlock Text="Exclude" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="14,0,6,0"/>
+        <TextBox x:Name="ExcludeBox" Width="230" ToolTip="Semicolon separated glob patterns, for example bin/;obj/;*.log" KeyDown="Exclude_KeyDown"/>
+        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+        <controls:IconButton Icon="{DynamicResource IconExpand}" Label="Expand" Click="Expand_Click" ToolTip="Expand every folder"/>
+        <controls:IconButton Icon="{DynamicResource IconCollapse}" Label="Collapse" Click="Collapse_Click" ToolTip="Collapse every folder"/>
+        <controls:IconButton Icon="{DynamicResource IconSync}" Label="Synchronise" Click="Sync_Click" ToolTip="Preview and run a folder synchronisation"/>
+      </WrapPanel>
+    </Border>
+
+    <Border Grid.Row="2" Background="{DynamicResource SurfaceRaised}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,4">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="96"/><ColumnDefinition Width="90"/>
+          <ColumnDefinition Width="132"/><ColumnDefinition Width="90"/><ColumnDefinition Width="132"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Name" Style="{StaticResource ColumnHeader}" Margin="21,0,0,0"/>
+        <TextBlock Grid.Column="1" Text="Type" Style="{StaticResource ColumnHeader}"/>
+        <TextBlock Grid.Column="2" Text="Status" Style="{StaticResource ColumnHeader}"/>
+        <TextBlock Grid.Column="3" Text="Left size" Style="{StaticResource ColumnHeader}" TextAlignment="Right"/>
+        <TextBlock Grid.Column="4" Text="Left modified" Style="{StaticResource ColumnHeader}" Margin="8,0,0,0"/>
+        <TextBlock Grid.Column="5" Text="Right size" Style="{StaticResource ColumnHeader}" TextAlignment="Right"/>
+        <TextBlock Grid.Column="6" Text="Right modified" Style="{StaticResource ColumnHeader}" Margin="8,0,0,0"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="3">
+      <TreeView x:Name="Tree" Background="{DynamicResource SurfaceAlt}" BorderThickness="0"
+                VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                MouseDoubleClick="Tree_MouseDoubleClick" KeyDown="Tree_KeyDown">
+        <TreeView.ItemTemplate>
+          <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+            <Grid MinHeight="19">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="96"/><ColumnDefinition Width="90"/>
+                <ColumnDefinition Width="132"/><ColumnDefinition Width="90"/><ColumnDefinition Width="132"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
+                <ToggleButton Style="{DynamicResource TreeExpander}" Margin="0,0,4,0" Visibility="{Binding ExpanderVisibility}"
+                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=TreeViewItem}, Mode=TwoWay}"/>
+                <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,7,0" VerticalAlignment="Center"
+                        Background="{Binding StatusFill}" BorderBrush="{Binding StatusStroke}" BorderThickness="1"/>
+                <TextBlock Text="{Binding Name}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Text="{Binding TypeText}" Foreground="{DynamicResource TextSecondary}"/>
+              <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{Binding StatusStroke}"/>
+              <TextBlock Grid.Column="3" Text="{Binding LeftSize}" TextAlignment="Right" Foreground="{DynamicResource TextSecondary}"/>
+              <TextBlock Grid.Column="4" Text="{Binding LeftModified}" Margin="8,0,0,0" Foreground="{DynamicResource TextSecondary}"/>
+              <TextBlock Grid.Column="5" Text="{Binding RightSize}" TextAlignment="Right" Foreground="{DynamicResource TextSecondary}"/>
+              <TextBlock Grid.Column="6" Text="{Binding RightModified}" Margin="8,0,0,0" Foreground="{DynamicResource TextSecondary}"/>
+            </Grid>
+          </HierarchicalDataTemplate>
+        </TreeView.ItemTemplate>
+      </TreeView>
+      <TextBlock x:Name="EmptyHint" Text="Select two folders and press Compare." HorizontalAlignment="Center" VerticalAlignment="Center"
+                 Foreground="{DynamicResource TextSecondary}"/>
+    </Grid>
+
+    <Border Grid.Row="4" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,5">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="FooterText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <ProgressBar x:Name="Progress" Grid.Column="1" Width="140" IsIndeterminate="True" Visibility="Collapsed" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

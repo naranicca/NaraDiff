@@ -1,0 +1,68 @@
+<Window x:Class="NaraDiff.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:NaraDiff.App.Controls"
+        Title="NaraDiff" Icon="/NaraDiff;component/Resources/NaraDiff.ico" Width="1360" Height="860" MinWidth="760" MinHeight="480"
+        FontFamily="Segoe UI" FontSize="12" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Background="{DynamicResource Surface}" Foreground="{DynamicResource TextPrimary}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
+      <WrapPanel>
+        <controls:IconButton Icon="{DynamicResource IconCompareFiles}" Label="Compare files" Click="NewFileCompare_Click"
+                             ToolTip="Compare two files (Ctrl+N)"/>
+        <controls:IconButton Icon="{DynamicResource IconCompareFolders}" Label="Compare folders" Click="NewFolderCompare_Click"
+                             ToolTip="Compare two folders (Ctrl+Shift+N)"/>
+        <controls:IconButton Icon="{DynamicResource IconMerge}" Label="3-way merge" Click="NewMerge_Click"
+                             ToolTip="Merge two variants against a base file (Ctrl+M)"/>
+        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+        <controls:IconButton Icon="{DynamicResource IconOpen}" ToolTip="Open files into a new comparison (Ctrl+O)" Click="Open_Click"/>
+        <controls:IconButton Icon="{DynamicResource IconSave}" ToolTip="Save the changed files (Ctrl+S)" Click="Save_Click"/>
+        <controls:IconButton Icon="{DynamicResource IconRefresh}" ToolTip="Reload from disk and compare again (F5)" Click="Refresh_Click"/>
+        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+        <controls:IconButton Icon="{DynamicResource IconPrevious}" ToolTip="Previous change (Shift+F7)" Click="Previous_Click"/>
+        <controls:IconButton Icon="{DynamicResource IconNext}" ToolTip="Next change (F7)" Click="Next_Click"/>
+        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+        <controls:IconButton x:Name="ToRightButton" Icon="{DynamicResource IconToRight}" ToolTip="Copy the current change to the right (Alt+Right)" Click="ToRight_Click"/>
+        <controls:IconButton x:Name="ToLeftButton" Icon="{DynamicResource IconToLeft}" ToolTip="Copy the current change to the left (Alt+Left)" Click="ToLeft_Click"/>
+        <controls:IconButton x:Name="AllToRightButton" Icon="{DynamicResource IconMergeAll}" Label="All to right" Click="AllToRight_Click"
+                             ToolTip="Copy every change to the right file (Ctrl+Alt+Right)"/>
+        <controls:IconButton x:Name="AllToLeftButton" Icon="{DynamicResource IconMergeAll}" Label="All to left" Click="AllToLeft_Click"
+                             ToolTip="Copy every change to the left file (Ctrl+Alt+Left)"/>
+        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+        <controls:IconButton Icon="{DynamicResource IconSearch}" ToolTip="Search in both files (Ctrl+F)" Click="Search_Click"/>
+        <controls:IconToggleButton x:Name="OptionsToggle" Icon="{DynamicResource IconOptions}" Label="Options" Click="OptionsToggle_Click"
+                                   ToolTip="Show the comparison options (Ctrl+P)"/>
+        <controls:IconButton Icon="{DynamicResource IconSettings}" ToolTip="Application settings" Click="Settings_Click"/>
+      </WrapPanel>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <TabControl x:Name="Tabs" SelectionChanged="Tabs_SelectionChanged"/>
+      <ContentControl x:Name="OptionsHost" Grid.Column="1" Visibility="Collapsed"/>
+      <TextBlock x:Name="EmptyHint" Text="Start with Compare files, Compare folders or 3-way merge."
+                 HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+    </Grid>
+
+    <Border Grid.Row="2" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,4">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <TextBlock x:Name="OptionSummary" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="0,0,10,0"/>
+          <TextBlock x:Name="VersionText" VerticalAlignment="Center" Foreground="{DynamicResource TextDisabled}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

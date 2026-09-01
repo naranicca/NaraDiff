@@ -1,0 +1,69 @@
+<Window x:Class="NaraDiff.App.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NaraDiff settings" Width="470" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        FontFamily="Segoe UI" FontSize="12" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Background="{DynamicResource Surface}" Foreground="{DynamicResource TextPrimary}">
+  <Grid Margin="18,14,18,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Text="Settings" FontSize="19" FontWeight="SemiBold" Margin="2,0,0,12"/>
+
+    <Border Grid.Row="1" Style="{DynamicResource Card}">
+      <StackPanel>
+        <TextBlock Text="Appearance" Style="{DynamicResource SectionLabel}"/>
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Theme" VerticalAlignment="Center"/>
+          <ComboBox x:Name="ThemeBox" Grid.Column="1" SelectionChanged="Appearance_Changed"/>
+        </Grid>
+        <CheckBox x:Name="AccessibleBox" Content="Colour blind friendly palette" Margin="0,10,0,0" Click="Appearance_Changed"
+                  ToolTip="Uses blue and vermillion instead of green and red"/>
+        <Grid Margin="0,10,0,0">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="104"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Editor font" VerticalAlignment="Center"/>
+          <ComboBox x:Name="FontBox" Grid.Column="1" IsEditable="True" SelectionChanged="Appearance_Changed"/>
+          <ComboBox x:Name="FontSizeBox" Grid.Column="2" Margin="6,0,0,0" SelectionChanged="Appearance_Changed"/>
+        </Grid>
+        <CheckBox x:Name="LineNumbersBox" Content="Show line numbers" Margin="0,10,0,0" Click="Appearance_Changed"/>
+        <CheckBox x:Name="WhitespaceBox" Content="Show spaces, tabs and line ends" Margin="0,8,0,0" Click="Appearance_Changed"/>
+        <CheckBox x:Name="WordWrapBox" Content="Wrap long lines" Margin="0,8,0,0" Click="Appearance_Changed"/>
+        <CheckBox x:Name="ConnectorsBox" Content="Draw the curved change connectors" Margin="0,8,0,0" Click="Appearance_Changed"/>
+        <CheckBox x:Name="SyncScrollBox" Content="Synchronise scrolling between panes" Margin="0,8,0,0" Click="Appearance_Changed"/>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="2" Style="{DynamicResource Card}" Margin="0,10,0,0">
+      <StackPanel>
+        <TextBlock Text="Files" Style="{DynamicResource SectionLabel}"/>
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Default encoding" VerticalAlignment="Center"/>
+          <ComboBox x:Name="EncodingBox" Grid.Column="1"/>
+        </Grid>
+        <Grid Margin="0,10,0,0">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Line ending when saving" VerticalAlignment="Center"/>
+          <ComboBox x:Name="LineEndingBox" Grid.Column="1"/>
+        </Grid>
+        <Grid Margin="0,10,0,0">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Recompare delay while typing (ms)" VerticalAlignment="Center"/>
+          <ComboBox x:Name="DebounceBox" Grid.Column="1"/>
+        </Grid>
+        <CheckBox x:Name="WatchBox" Content="Watch the compared files for external changes" Margin="0,10,0,0"/>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="3" Margin="0,16,0,0">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <TextBlock x:Name="VersionText" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal">
+        <Button Content="Cancel" IsCancel="True" Click="Cancel_Click"/>
+        <Button Content="OK" Style="{DynamicResource PrimaryButton}" Margin="8,0,0,0" IsDefault="True" Click="Ok_Click"/>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

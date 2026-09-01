@@ -1,0 +1,98 @@
+<Window x:Class="NaraDiff.App.Views.SyncPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Folder synchronisation preview" Width="920" Height="640" WindowStartupLocation="CenterOwner"
+        FontFamily="Segoe UI" FontSize="12" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Background="{DynamicResource Surface}" Foreground="{DynamicResource TextPrimary}">
+  <Grid Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Text="Nothing is copied or deleted until you press Run." FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+    <Border Grid.Row="1" Style="{DynamicResource Card}">
+      <StackPanel>
+        <TextBlock Text="Direction and rules" Style="{DynamicResource SectionLabel}"/>
+        <WrapPanel>
+          <ComboBox x:Name="DirectionBox" Width="230" SelectionChanged="Option_Changed"/>
+          <CheckBox x:Name="CopyMissingBox" Content="Copy files that are missing on the target" Margin="16,0,0,0" IsChecked="True" Click="Option_Changed"/>
+          <CheckBox x:Name="OverwriteBox" Content="Overwrite files that differ" Margin="16,0,0,0" IsChecked="True" Click="Option_Changed"/>
+          <CheckBox x:Name="DeleteBox" Content="Delete files that exist only on the target" Margin="16,0,0,0" Click="Option_Changed"/>
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="2" Style="{DynamicResource Card}" Margin="0,10,0,10">
+      <TextBlock x:Name="SummaryText" TextWrapping="Wrap"/>
+    </Border>
+
+    <Border Grid.Row="3" Style="{DynamicResource Card}" Padding="0">
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Border Background="{DynamicResource SurfaceRaised}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="10,5" CornerRadius="8,8,0,0">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="210"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Action" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}"/>
+            <TextBlock Grid.Column="1" Text="Relative path" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}"/>
+            <TextBlock Grid.Column="2" Text="Size" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" TextAlignment="Right"/>
+            <TextBlock Grid.Column="3" Text="Reason" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" Margin="10,0,0,0"/>
+          </Grid>
+        </Border>
+        <ListBox x:Name="ActionList" Grid.Row="1" Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Padding" Value="10,3"/>
+              <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+              <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+              <Setter Property="Background" Value="Transparent"/>
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="ListBoxItem">
+                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                      <ContentPresenter/>
+                    </Border>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="210"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Direction}" Foreground="{Binding Accent}" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Target}"/>
+                <TextBlock Grid.Column="2" Text="{Binding Size}" TextAlignment="Right" Foreground="{DynamicResource TextSecondary}"/>
+                <TextBlock Grid.Column="3" Text="{Binding Reason}" Margin="10,0,0,0" Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis"/>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+    </Border>
+
+    <CheckBox x:Name="ConfirmDeleteBox" Grid.Row="4" Margin="2,12,0,0" Visibility="Collapsed" Click="Option_Changed"
+              Content="I confirm the deletions listed above"/>
+
+    <Grid Grid.Row="5" Margin="0,14,0,0">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal">
+        <Button x:Name="RunButton" Content="Run" Style="{DynamicResource PrimaryButton}" Click="Run_Click"/>
+        <Button Content="Close" Margin="8,0,0,0" IsCancel="True" Click="Close_Click"/>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
