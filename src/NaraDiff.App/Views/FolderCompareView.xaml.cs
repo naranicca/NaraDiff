@@ -166,7 +166,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         IncludeHidden = HiddenBox.IsChecked == true,
         CaseSensitiveNames = CaseBox.IsChecked == true,
         ContentMode = ContentModes[Math.Max(0, ContentModeBox.SelectedIndex)].Mode,
-        ExcludePatterns = [..ExcludeBox.Text.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)],
+        ExcludePatterns = [.. ExcludeBox.Text.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)],
         TimeToleranceSeconds = _settings.FolderOptions.TimeToleranceSeconds,
         MaxContentCompareBytes = _settings.FolderOptions.MaxContentCompareBytes
     };
@@ -401,7 +401,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         if (entry.Status == FolderEntryStatus.TypeConflict)
         {
             MessageBox.Show(Window.GetWindow(this), "One side is a file and the other a folder, so they cannot be compared as text.",
-                "NaraDiff", MessageBoxButton.OK, MessageBoxImage. Information);
+                "NaraDiff", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         var left = entry.Left?.FullPath ?? Path.Combine(_result.LeftPath, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));

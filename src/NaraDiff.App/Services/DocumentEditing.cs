@@ -69,7 +69,7 @@ public static class DocumentEditing
         document.Replace(startOffset, length, text);
     }
 
-    /// <summary>Joins lines, filling in the fallback terminator where a source line had none .</summary>
+    /// <summary>Joins lines, filling in the fallback terminator where a source line had none.</summary>
     public static string BuildText(IReadOnlyList<TextLine> source, string eol)
     {
         ArgumentNullException.ThrowIfNull(source);

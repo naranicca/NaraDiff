@@ -93,7 +93,7 @@ public partial class SettingsWindow : Window
     {
         Appearance_Changed(sender, e);
         _settings.DefaultEncodingId = (EncodingBox.SelectedItem as EncodingChoice)?.Id ?? EncodingCatalog.Utf8Id;
-        _settings.SaveLineEnding = LineEndingModes[Math.Max(0, LineEndingBox.SelectedIndex) ].Mode;
+        _settings.SaveLineEnding = LineEndingModes[Math.Max(0, LineEndingBox.SelectedIndex)].Mode;
         _settings.DiffDebounceMilliseconds = DebounceBox.SelectedItem is int delay ? delay : 250;
         _settings.WatchFilesForChanges = WatchBox.IsChecked == true;
         SettingsApplied?.Invoke(this, EventArgs.Empty);
@@ -107,7 +107,7 @@ public partial class SettingsWindow : Window
         _settings.EditorFontFamily = _snapshot.EditorFontFamily;
         _settings.EditorFontSize = _snapshot.EditorFontSize;
         _settings.ShowLineNumbers = _snapshot.ShowLineNumbers;
-        _settings. ShowWhitespace = _snapshot.ShowWhitespace;
+        _settings.ShowWhitespace = _snapshot.ShowWhitespace;
         _settings.WordWrap = _snapshot.WordWrap;
         _settings.ShowConnectors = _snapshot.ShowConnectors;
         _settings.SynchronizeScrolling = _snapshot.SynchronizeScrolling;

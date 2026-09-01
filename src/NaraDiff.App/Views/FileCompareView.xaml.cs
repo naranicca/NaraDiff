@@ -78,7 +78,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             editor.TextChanged += Editor_TextChanged;
             editor.CaretLineChanged += (_, _) => UpdateFooter();
             // Whoever the user touches last leads the synchronised scrolling.
-            editor.PreviewMouseWheel += (_ _) => _scrollLeader = pane;
+            editor.PreviewMouseWheel += (_, _) => _scrollLeader = pane;
             editor.PreviewMouseDown += (_, _) => _scrollLeader = pane;
             editor.PreviewKeyDown += (_, _) => _scrollLeader = pane;
             editor.GotKeyboardFocus += (_, _) => _scrollLeader = pane;
@@ -396,10 +396,10 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         catch (OperationCanceledException)
         {
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            _logger.Error("compare", e);
-            ShowNotice($"The comparison failed: {e.Message}", null);
+            _logger.Error("compare", ex);
+            ShowNotice($"The comparison failed: {ex.Message}", null);
         }
         finally
         {
@@ -423,7 +423,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
                 LeftCount = block.LeftCount,
                 RightStart = block.RightStart,
                 RightCount = block.RightCount,
-                Fill = palette.RibbonFor(block.Kind, block. IsMoved),
+                Fill = palette.RibbonFor(block.Kind, block.IsMoved),
                 Stroke = palette.StrokeFor(block.Kind, block.IsMoved),
                 AllowToRight = !RightEditor.IsReadOnly,
                 AllowToLeft = !LeftEditor.IsReadOnly,
@@ -438,7 +438,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             });
         }
         Connector.SetLinks(links);
-        Ruler.SetMarks (marks);
+        Ruler.SetMarks(marks);
         UpdateFooter();
         UpdateHeaders();
     }
@@ -471,7 +471,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         RightEditor.Decorations = BuildHexDecorations(rightRows);
         _loading = false;
         Connector.SetLinks([]);
-        Ruler.SetMarks([..rightRows.Select((row, index) => (row, index)).Where(entry => entry.row.HasDifference)
+        Ruler.SetMarks([.. rightRows.Select((row, index) => (row, index)).Where(entry => entry.row.HasDifference)
             .Select(entry => new OverviewMark { Start = entry.index, Count = 1, Brush = ThemeService.Palette.ModifyStroke })]);
         StatusText = summary.Identical
             ? $"Binary files are identical ({summary.LeftLength:N0} bytes)"
@@ -550,9 +550,9 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         {
             var isLeft = ReferenceEquals(editor, LeftEditor);
             var first = document.GetLineByOffset(Math.Clamp(editor.SelectionStart, 0, document.TextLength)).LineNumber - 1;
-            var last = document.GetLineByOffset(Math.Clamp(editor.SelectionStart + editor.SelectionLength, 0, document. TextLength)).LineNumber - 1;
+            var last = document.GetLineByOffset(Math.Clamp(editor.SelectionStart + editor.SelectionLength, 0, document.TextLength)).LineNumber - 1;
             var hits = _diff.Blocks
-                .Where(block => Overlaps(isLeft ? block.LeftStart : block. RightStart, isLeft ? block.LeftCount : block.RightCount, first, last))
+                .Where(block => Overlaps(isLeft ? block.LeftStart : block.RightStart, isLeft ? block.LeftCount : block.RightCount, first, last))
                 .ToList();
             if (hits.Count > 0) return hits;
         }
@@ -640,7 +640,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     /// </summary>
     private bool CanSynchronizeFrom(DiffTextEditor source) =>
         _settings.SynchronizeScrolling
-        && ! IsBinaryMode
+        && !IsBinaryMode
         && _programmaticScrolls == 0
         && (_scrollLeader is null || ReferenceEquals(_scrollLeader, source));
 
@@ -719,7 +719,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             ? "no changes"
             : $"change {block.Index + 1} of {_diff.Blocks.Count}";
         FooterText.Text = $"{position}  ·  {side} line {caret.CaretLineIndex + 1} of {Math.Max(1, caret.DocumentLineCount)}";
-        FooterRightText.Text = $"{LeftEditor.EncodingChoice.DisplayName} {LineEndings.DisplayName(LeftEditor.LineEnding)}  ⇄  {RightEditor.EncodingChoice.DisplayName} {LineEndings.DisplayName (RightEditor.LineEnding)}  ·  {_options.Describe()}";
+        FooterRightText.Text = $"{LeftEditor.EncodingChoice.DisplayName} {LineEndings.DisplayName(LeftEditor.LineEnding)}  ⇄  {RightEditor.EncodingChoice.DisplayName} {LineEndings.DisplayName(RightEditor.LineEnding)}  ·  {_options.Describe()}";
         StatusChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -851,7 +851,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     private void MoveToMatch(int direction)
     {
         var editor = ActiveEditor;
-        var matches = editor == LeftEditor ? leftMatches : _rightMatches;
+        var matches = editor == LeftEditor ? _leftMatches : _rightMatches;
         if (matches.Count == 0) return;
         _matchIndex = _matchIndex < 0
             ? matches.FindIndex(match => match.Line >= editor.CaretLineIndex)

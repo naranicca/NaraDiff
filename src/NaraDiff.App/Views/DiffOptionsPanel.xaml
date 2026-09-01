@@ -27,7 +27,7 @@
             <TextBox x:Name="PresetNameBox" ToolTip="Name for a new preset"/>
             <Button Grid.Column="1" Content="Save" MinWidth="58" Margin="6,0,0,0" Click="SavePreset_Click"/>
           </Grid>
-        
+
           <Separator/>
           <TextBlock Text="Algorithm" Style="{DynamicResource SectionLabel}"/>
           <ComboBox x:Name="AlgorithmBox" SelectionChanged="Option_Changed"
@@ -35,7 +35,7 @@
           <TextBlock Text="Inline highlighting" Style="{DynamicResource SectionLabel}" Margin="0,10,0,6"/>
           <ComboBox x:Name="InlineBox" SelectionChanged="Option_Changed" ToolTip="Word or character level highlighting inside changed lines"/>
           <CheckBox x:Name="MovesBox" Content="Detect moved blocks" Margin="0,10,0,0" Click="Option_Changed"/>
-        
+
           <Separator/>
           <TextBlock Text="Whitespace" Style="{DynamicResource SectionLabel}"/>
           <CheckBox x:Name="LeadingBox" Content="Ignore leading whitespace" Click="Option_Changed"/>

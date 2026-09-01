@@ -115,7 +115,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(basePath)) await LoadAsync(MergePane.Base, basePath!);
         if (!string.IsNullOrWhiteSpace(leftPath)) await LoadAsync(MergePane.Left, leftPath!);
-        if (!string. IsNullOrWhiteSpace(rightPath)) await LoadAsync(MergePane.Right, rightPath!);
+        if (!string.IsNullOrWhiteSpace(rightPath)) await LoadAsync(MergePane.Right, rightPath!);
         OutputPathBox.Text = string.IsNullOrWhiteSpace(outputPath) ? leftPath ?? string.Empty : outputPath!;
         await MergeAsync();
     }
@@ -373,7 +373,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
                 RightCount = region.RightCount,
                 Fill = fill,
                 Stroke = stroke,
-                AllowToLeft = region.RightCount > 0 || region. IsConflict,
+                AllowToLeft = region.RightCount > 0 || region.IsConflict,
                 IsConflict = unresolved,
                 Tooltip = Describe(region, "right"),
                 Tag = region
@@ -505,7 +505,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         BaseEditor.MoveCaretToLine(region.BaseStart);
         LeftEditor.ScrollToLineIndex(region.LeftStart);
         RightEditor.ScrollToLineIndex(region.RightStart);
-        if (_document is not null && _document.RegionRanges.TryGetValue(region. Index, out var range)) ResultEditor.ScrollToLineIndex(range.Start);
+        if (_document is not null && _document.RegionRanges.TryGetValue(region.Index, out var range)) ResultEditor.ScrollToLineIndex(range.Start);
         RefreshConnectors();
         UpdateFooter();
     }

@@ -97,21 +97,21 @@ public sealed class DiffPalette
         // purple and teal, which stay separable for deuteranopia and protanopia.
         if (accessible)
             return dark
-                ? new DiffPalette(Rgb(0x56, 0x9C, 0xF5), Rgb(0xE8, 0x86, 0x3C), Rgb(0xA3, 0x71, 0xF7), Rgb(ØxCC, 0x79, 0xA7), Rgb(0x2E, 0xC4, 0xB6), true)
+                ? new DiffPalette(Rgb(0x56, 0x9C, 0xF5), Rgb(0xE8, 0x86, 0x3C), Rgb(0xA3, 0x71, 0xF7), Rgb(0xCC, 0x79, 0xA7), Rgb(0x2E, 0xC4, 0xB6), true)
                 : new DiffPalette(Rgb(0x0B, 0x66, 0xC3), Rgb(0xC4, 0x5C, 0x0E), Rgb(0x6E, 0x40, 0xC9), Rgb(0xA8, 0x44, 0x7F), Rgb(0x0F, 0x82, 0x77), false);
         return dark
             ? new DiffPalette(Rgb(0x3F,0xB9, 0x50), Rgb(0xF8, 0x51, 0x49), Rgb(0x58, 0xA6, 0xFF), Rgb(0xE3, 0xB3, 0x41), Rgb(0xA3, 0x71, 0xF7), true)
-            : new DiffPalette(Rgb(0x1A, 0x7F, 0x37), Rgb(ØxCF, 0x22, 0x2E), Rgb(0x09, 0x69, ØxDA), Rgb(0x9A, 0x6E, 0x00), Rgb(0x82, 0x50, ØxDF), false);
+            : new DiffPalette(Rgb(0x1A, 0x7F, 0x37), Rgb(0xCF, 0x22, 0x2E), Rgb(0x09, 0x69, 0xDA), Rgb(0x9A, 0x6E, 0x00), Rgb(0x82, 0x50, 0xDF), false);
     }
 
     public SolidColorBrush FillFor(DiffBlockKind kind, bool moved = false) => moved ? MoveFill : kind switch
     {
-        DiffBlockKind. Insert => InsertFill,
+        DiffBlockKind.Insert => InsertFill,
         DiffBlockKind.Delete => DeleteFill,
         _ => ModifyFill
     };
 
-    public SolidColorBrush StrokeFor (DiffBlockKind kind, bool moved = false) => moved ? MoveStroke : kind switch
+    public SolidColorBrush StrokeFor(DiffBlockKind kind, bool moved = false) => moved ? MoveStroke : kind switch
     {
         DiffBlockKind.Insert => InsertStroke,
         DiffBlockKind.Delete => DeleteStroke,
