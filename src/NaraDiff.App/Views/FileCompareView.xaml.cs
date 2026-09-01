@@ -75,6 +75,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         foreach (var editor in new[] { LeftEditor, RightEditor })
         {
             var pane = editor;
+            var isLeftPane = ReferenceEquals(pane, LeftEditor);
             editor.ViewChanged += Editor_ViewChanged;
             editor.TextChanged += Editor_TextChanged;
             editor.CaretLineChanged += (_, _) => UpdateFooter();
@@ -83,6 +84,10 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             editor.PreviewMouseDown += (_, _) => _scrollLeader = pane;
             editor.PreviewKeyDown += (_, _) => _scrollLeader = pane;
             editor.GotKeyboardFocus += (_, _) => _scrollLeader = pane;
+            editor.AllowDrop = true;
+            editor.PreviewDragEnter += (_, e) => SetFileDropEffect(e);
+            editor.PreviewDragOver += (_, e) => SetFileDropEffect(e);
+            editor.PreviewDrop += (_, e) => HandleFileDrop(isLeftPane, e);
         }
         _debounce.Tick += async (_, _) => { _debounce.Stop(); await CompareAsync(); };
         _watcher.FileChanged += (_, path) => Dispatcher.BeginInvoke(() => OnDiskChange(path));
@@ -208,6 +213,26 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         if (!string.IsNullOrEmpty(current)) dialog.InitialDirectory = System.IO.Path.GetDirectoryName(current);
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         _ = LoadSideAsync(left, dialog.FileName);
+    }
+
+    private static void SetFileDropEffect(DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void HandleFileDrop(bool droppedOnLeft, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+        e.Handled = true;
+        var files = paths.Where(System.IO.File.Exists).ToArray();
+        if (files.Length == 0)
+        {
+            ShowNotice("Folders can't be dropped here; use folder comparison to compare directories.", null);
+            return;
+        }
+        if (files.Length >= 2) _ = OpenAsync(files[0], files[1]);
+        else _ = LoadSideAsync(droppedOnLeft, files[0]);
     }
 
     private async Task LoadSideAsync(bool left, string path, EncodingChoice? encoding = null)

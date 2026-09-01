@@ -79,6 +79,15 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
             editor.PreviewKeyDown += (_, _) => _scrollLeader = pane;
             editor.GotKeyboardFocus += (_, _) => _scrollLeader = pane;
         }
+        foreach (var target in new[] { MergePane.Left, MergePane.Base, MergePane.Right })
+        {
+            var droppedOn = target;
+            var editor = EditorFor(target);
+            editor.AllowDrop = true;
+            editor.PreviewDragEnter += (_, e) => SetFileDropEffect(e);
+            editor.PreviewDragOver += (_, e) => SetFileDropEffect(e);
+            editor.PreviewDrop += (_, e) => HandleFileDrop(droppedOn, e);
+        }
         LeftEditor.IsReadOnly = true;
         BaseEditor.IsReadOnly = true;
         RightEditor.IsReadOnly = true;
@@ -243,6 +252,36 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         var dialog = new OpenFileDialog { Title = $"Select the {pane.ToString().ToLowerInvariant()} file", CheckFileExists = true };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         _ = LoadAsync(pane, dialog.FileName);
+    }
+
+    private static void SetFileDropEffect(DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void HandleFileDrop(MergePane pane, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+        e.Handled = true;
+        var files = paths.Where(File.Exists).ToArray();
+        if (files.Length == 0)
+        {
+            SetNotice("Folders can't be dropped here; use folder compare to compare directories.");
+            return;
+        }
+        _ = DropFileAsync(pane, files);
+    }
+
+    private async Task DropFileAsync(MergePane pane, string[] files)
+    {
+        if (files.Length == 1)
+        {
+            await LoadAsync(pane, files[0]);
+        }
+        await LoadAsync(MergePane.Base, files[0]);
+        await LoadAsync(MergePane.Left, files[1]);
+        if (files.Length >= 3) await LoadAsync(MergePane.Right, files[2]);
     }
 
     private async Task LoadAsync(MergePane pane, string path, EncodingChoice? encoding = null)
