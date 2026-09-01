@@ -85,6 +85,14 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         CaseBox.IsChecked = options.CaseSensitiveNames;
         ExcludeBox.Text = string.Join(";", options.ExcludePatterns);
         _suppressEvents = false;
+        foreach (var (box, left) in new[] { (LeftPathBox, true), (RightPathBox, false) })
+        {
+            var isLeft = left;
+            box.AllowDrop = true;
+            box.PreviewDragEnter += (_, e) => SetFolderDropEffect(e);
+            box.PreviewDragOver += (_, e) => SetFolderDropEffect(e);
+            box.PreviewDrop += async (_, e) => await HandleFolderDrop(isLeft, e);
+        }
     }
 
     public event EventHandler? TitleChanged;
@@ -300,6 +308,21 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var dialog = new OpenFolderDialog { Title = "Select a folder" };
         if (Directory.Exists(target.Text)) dialog.InitialDirectory = target.Text;
         if (dialog.ShowDialog(Window.GetWindow(this)) == true) target.Text = dialog.FolderName;
+    }
+
+    private static void SetFolderDropEffect(DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async Task HandleFolderDrop(bool left, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+        e.Handled = true;
+        var folder = paths.FirstOrDefault(Directory.Exists) ?? Path.GetDirectoryName(paths.FirstOrDefault(File.Exists));
+        if (folder is null) return;
+        await OpenAsync(left ? folder : null, left ? null : folder);
     }
 
     private async void Compare_Click(object sender, RoutedEventArgs e) => await CompareAsync();
