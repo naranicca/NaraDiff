@@ -62,8 +62,8 @@
         <ColumnDefinition Width="*"/><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
       </Grid.ColumnDefinitions>
       <controls:DiffTextEditor x:Name="LeftEditor" Grid.Column="0"/>
-      <controls:ConnectorRibbon x:Name="Connector" Grid.Column="1"/>
       <controls:DiffTextEditor x:Name="RightEditor" Grid.Column="2"/>
+      <controls:ConnectorRibbon x:Name="Connector" Grid.Column="1" Grid.ColumnSpan="2" Panel.ZIndex="1" GutterWidth="58"/>
       <controls:OverviewRuler x:Name="Ruler" Grid.Column="3"/>
       <Border x:Name="BusyOverlay" Grid.ColumnSpan="4" Visibility="Collapsed" Background="#40000000">
         <Border Style="{DynamicResource Card}" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20,14">

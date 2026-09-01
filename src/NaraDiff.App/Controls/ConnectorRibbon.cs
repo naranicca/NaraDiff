@@ -87,6 +87,16 @@ public sealed class ConnectorRibbon : FrameworkElement
 
     public bool ShowButtons { get; set; } = true;
 
+    public static readonly DependencyProperty GutterWidthProperty =
+        DependencyProperty.Register(nameof(GutterWidth), typeof(double), typeof(ConnectorRibbon),
+            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public double GutterWidth
+    {
+        get => (double)GetValue(GutterWidthProperty);
+        set => SetValue(GutterWidthProperty, value);
+    }
+
     public bool ShowRibbons { get; set; } = true;
 
     public void SetLinks(IReadOnlyList<ConnectorLink> links)
@@ -103,14 +113,17 @@ public sealed class ConnectorRibbon : FrameworkElement
         ArgumentNullException.ThrowIfNull(drawingContext);
         _buttons.Clear();
         _shapes.Clear();
-        var width = ActualWidth;
+        var actualWidth = ActualWidth;
         var height = ActualHeight;
-        if (width <= 0 || height <= 0) return;
-        drawingContext.DrawRectangle(ThemeService.Brush("GutterBackground"), null, new Rect(0, 0, width, height));
+        if (actualWidth <= 0 || height <= 0) return;
+        var gutterWidth = GutterWidth > 0 ? Math.Min(GutterWidth, actualWidth) : actualWidth;
+        drawingContext.DrawRectangle(ThemeService.Brush("GutterBackground"), null, new Rect(0, 0, gutterWidth, height));
         var edge = ThemeService.Brush("Border");
         drawingContext.DrawRectangle(edge, null, new Rect(0, 0, 1, height));
-        drawingContext.DrawRectangle(edge, null, new Rect(width - 1, 0, 1, height));
+        var hasExtraRoom = actualWidth > gutterWidth + 1;
+        if (!hasExtraRoom) drawingContext.DrawRectangle(edge, null, new Rect(gutterWidth - 1, 0, 1, height));
         if (LeftEditor is null || RightEditor is null || Links.Count == 0) return;
+        var curveWidth = hasExtraRoom ? Math.Min(actualWidth, gutterWidth + MarginWidth(RightEditor)) : gutterWidth;
         foreach (var link in Links)
         {
             var leftTop = ToLocal(LeftEditor, LeftEditor.GetLineTop(link.LeftStart));
@@ -122,7 +135,7 @@ public sealed class ConnectorRibbon : FrameworkElement
             var lowest = Math.Max(Math.Max(leftTop, leftBottom), Math.Max(rightTop, rightBottom));
             var highest = Math.Min(Math.Min(leftTop, leftBottom), Math.Min(rightTop, rightBottom));
             if (lowest < -40 || highest > height + 40) continue;
-            var ribbon = RibbonGeometry.Build(leftTop, leftBottom, rightTop, rightBottom, width);
+            var ribbon = RibbonGeometry.Build(leftTop, leftBottom, rightTop, rightBottom, curveWidth);
             var shape = BuildGeometry(ribbon);
             _shapes.Add((shape, link));
             if (ShowRibbons)
@@ -133,8 +146,18 @@ public sealed class ConnectorRibbon : FrameworkElement
                 drawingContext.DrawGeometry(link.Fill, pen, shape);
             }
             if (link.IsConflict) DrawConflictMarker(drawingContext, link, ribbon.CenterY);
-            if (ShowButtons) DrawButtons(drawingContext, link, ribbon.CenterY, width);
+            if (ShowButtons) DrawButtons(drawingContext, link, ribbon.CenterY, gutterWidth);
         }
+    }
+
+    /// <summary>Total width of an editor's left margin (line numbers and any fold or separator margins).</summary>
+    private static double MarginWidth(DiffTextEditor? editor)
+    {
+        if (editor is null) return 0;
+        var total = 0.0;
+        foreach (var margin in editor.TextArea.LeftMargins)
+            if (margin is FrameworkElement element) total += element.ActualWidth;
+        return total;
     }
 
     private void DrawButtons(DrawingContext drawingContext, ConnectorLink link, double centerY, double width)
