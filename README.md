@@ -202,8 +202,8 @@ dotnet build NaraDiff.sln -c Release
 ## Project structure
 
 | Project | Contents |
-| --- | --- /
-| `src/NaraDiff.Core` | Diff engine, three way merge, folder comparison, text and encoding handling, ribbon geometry, settings model
+| --- | --- |
+| `src/NaraDiff.Core` | Diff engine, three way merge, folder comparison, text and encoding handling, ribbon geometry, settings model |
 | `src/NaraDiff. Infrastructure` | File loading and saving, file watching, folder synchronisation, JSON settings store, logging |
 | `src/NaraDiff.App` | WPF user interface: editors, connector ribbon, overview ruler, views, themes |
 
