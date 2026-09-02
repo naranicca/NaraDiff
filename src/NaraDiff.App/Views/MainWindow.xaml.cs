@@ -171,38 +171,11 @@ public partial class MainWindow : Window
 
     // ---------- toolbar ----------
 
-    private async void NewFileCompare_Click(object sender, RoutedEventArgs e)
-    {
-        var left = PickFile("Select the left file");
-        if (left is null)
-        {
-            await NewFileCompareAsync(null, null);
-            return;
-        }
-        var right = PickFile("Select the right file", Path.GetDirectoryName(left));
-        await NewFileCompareAsync(left, right);
-    }
+    private async void NewFileCompare_Click(object sender, RoutedEventArgs e) => await NewFileCompareAsync(null, null);
 
-    private async void NewFolderCompare_Click(object sender, RoutedEventArgs e)
-    {
-        var left = PickFolder("Select the left folder");
-        var right = left is null ? null : PickFolder("Select the right folder");
-        await NewFolderCompareAsync(left, right);
-    }
+    private async void NewFolderCompare_Click(object sender, RoutedEventArgs e) => await NewFolderCompareAsync(null, null);
 
-    private async void NewMerge_Click(object sender, RoutedEventArgs e)
-    {
-        var basePath = PickFile("Select the base (common ancestor) file");
-        if (basePath is null)
-        {
-            await NewMergeAsync(null, null, null, null);
-            return;
-        }
-        var directory = Path.GetDirectoryName(basePath);
-        var left = PickFile("Select the left (mine) file", directory);
-        var right = PickFile("Select the right (theirs) file", directory);
-        await NewMergeAsync(basePath, left, right, left);
-    }
+    private async void NewMerge_Click(object sender, RoutedEventArgs e) => await NewMergeAsync(null, null, null, null);
 
     private async void Open_Click(object sender, RoutedEventArgs e) => await NewFileCompareAsync(PickFile("Select the left file"), null);
 
@@ -357,13 +330,6 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory)) dialog.InitialDirectory = directory;
         }
         return dialog.ShowDialog(this) == true ? dialog.FileName : null;
-    }
-
-    private string? PickFolder(string title)
-    {
-        var dialog = new OpenFolderDialog { Title = title };
-        if (_settings.RecentFolders.Count > 0 && Directory.Exists(_settings.RecentFolders[0])) dialog.InitialDirectory = _settings.RecentFolders[0];
-        return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
