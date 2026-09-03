@@ -117,25 +117,22 @@ public sealed class ConnectorRibbon : FrameworkElement
         var height = ActualHeight;
         if (actualWidth <= 0 || height <= 0) return;
         var gutterWidth = GutterWidth > 0 ? Math.Min(GutterWidth, actualWidth) : actualWidth;
-        drawingContext.DrawRectangle(ThemeService.Brush("GutterBackground"), null, new Rect(0, 0, gutterWidth, height));
-        var edge = ThemeService.Brush("Border");
-        drawingContext.DrawRectangle(edge, null, new Rect(0, 0, 1, height));
         var hasExtraRoom = actualWidth > gutterWidth + 1;
-        if (!hasExtraRoom) drawingContext.DrawRectangle(edge, null, new Rect(gutterWidth - 1, 0, 1, height));
+        if (!hasExtraRoom) drawingContext.DrawRectangle(ThemeService.Brush("Border"), null, new Rect(gutterWidth - 1, 0, 1, height));
         if (LeftEditor is null || RightEditor is null || Links.Count == 0) return;
         var curveWidth = hasExtraRoom ? Math.Min(actualWidth, gutterWidth + MarginWidth(RightEditor)) : gutterWidth;
         foreach (var link in Links)
         {
             var leftTop = ToLocal(LeftEditor, LeftEditor.GetLineTop(link.LeftStart));
             var leftBottom = ToLocal(LeftEditor, LeftEditor.GetLineBottom(link.LeftStart + Math.Max(0, link.LeftCount) - 1));
-            if (link.LeftCount == 0) leftBottom = leftTop;
+            if (link.LeftCount == 0) leftBottom = leftTop+1;
             var rightTop = ToLocal(RightEditor, RightEditor.GetLineTop(link.RightStart));
             var rightBottom = ToLocal(RightEditor, RightEditor.GetLineBottom(link.RightStart + Math.Max(0, link.RightCount) - 1));
-            if (link.RightCount == 0) rightBottom = rightTop;
+            if (link.RightCount == 0) rightBottom = rightTop+1;
             var lowest = Math.Max(Math.Max(leftTop, leftBottom), Math.Max(rightTop, rightBottom));
             var highest = Math.Min(Math.Min(leftTop, leftBottom), Math.Min(rightTop, rightBottom));
             if (lowest < -40 || highest > height + 40) continue;
-            var ribbon = RibbonGeometry.Build(leftTop, leftBottom, rightTop, rightBottom, curveWidth);
+            var ribbon = RibbonGeometry.Build(leftTop, leftBottom-1, rightTop, rightBottom-1, curveWidth);
             var shape = BuildGeometry(ribbon);
             _shapes.Add((shape, link));
             if (ShowRibbons)
@@ -143,7 +140,10 @@ public sealed class ConnectorRibbon : FrameworkElement
                 var hovered = ReferenceEquals(link, _hoveredLink);
                 var pen = new Pen(link.Stroke, hovered ? 1.6 : 1.0) { LineJoin = PenLineJoin.Round };
                 pen.Freeze();
-                drawingContext.DrawGeometry(link.Fill, pen, shape);
+                //drawingContext.DrawGeometry(link.Fill, pen, shape);
+                drawingContext.DrawGeometry(link.Fill, null, shape);
+                drawingContext.DrawGeometry(null, pen, BuildCurveGeometry(ribbon.Top));
+                drawingContext.DrawGeometry(null, pen, BuildCurveGeometry(ribbon.Bottom));
             }
             if (link.IsConflict) DrawConflictMarker(drawingContext, link, ribbon.CenterY);
             if (ShowButtons) DrawButtons(drawingContext, link, ribbon.CenterY, gutterWidth);
@@ -154,10 +154,14 @@ public sealed class ConnectorRibbon : FrameworkElement
     private static double MarginWidth(DiffTextEditor? editor)
     {
         if (editor is null) return 0;
-        var total = 0.0;
-        foreach (var margin in editor.TextArea.LeftMargins)
-            if (margin is FrameworkElement element) total += element.ActualWidth;
-        return total;
+        try
+        {
+            return editor.TextArea.TextView.TransformToAncestor(editor).Transform(new Point(0, 0)).X;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
     }
 
     private void DrawButtons(DrawingContext drawingContext, ConnectorLink link, double centerY, double width)
@@ -233,6 +237,20 @@ public sealed class ConnectorRibbon : FrameworkElement
             context.BezierTo(ToPoint(ribbon.Top.Control1), ToPoint(ribbon.Top.Control2), ToPoint(ribbon.Top.End), true, false);
             context.LineTo(ToPoint(ribbon.Bottom.Start), true, false);
             context.BezierTo(ToPoint(ribbon.Bottom.Control1), ToPoint(ribbon.Bottom.Control2), ToPoint(ribbon.Bottom.End), true, false);
+        }
+        geometry.Freeze();
+        return geometry;
+    }
+
+    /// <summary>An open path for just one curve, so it can be stroked without also drawing the
+    /// straight sides that close the ribbon's fill shape.</summary>
+    private static Geometry BuildCurveGeometry(RibbonCurve curve)
+    {
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(ToPoint(curve.Start), false, false);
+            context.BezierTo(ToPoint(curve.Control1), ToPoint(curve.Control2), ToPoint(curve.End), true, false);
         }
         geometry.Freeze();
         return geometry;

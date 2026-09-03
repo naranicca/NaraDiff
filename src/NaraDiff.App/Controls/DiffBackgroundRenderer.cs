@@ -25,7 +25,6 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
     public int CurrentLine { get; set; } = -1;
 
     public KnownLayer Layer => KnownLayer.Background;
-
     public void Draw(TextView textView, DrawingContext drawingContext)
     {
         ArgumentNullException.ThrowIfNull(textView);
@@ -41,15 +40,16 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
             var top = visualLine.VisualTop - scroll;
             var height = visualLine.Height;
             if (ShowCurrentLine && lineIndex == CurrentLine && CurrentLineBrush is not null)
-            drawingContext.DrawRectangle(CurrentLineBrush, null, new Rect(0, top, width, height));
+                drawingContext.DrawRectangle(CurrentLineBrush, null, new Rect(0, top, width, height));
             if (Decorations.TryGet(lineIndex, out var decoration) && decoration is not null)
             {
                 drawingContext.DrawRectangle(decoration.Fill, null, new Rect(0, top, width, height));
                 if (decoration.EdgeStroke is not null)
                 {
-                    drawingContext.DrawRectangle(decoration.EdgeStroke, null, new Rect(0, top, 2.5, height));
-                    if (decoration.IsBlockStart) drawingContext.DrawRectangle(decoration.EdgeStroke, null, new Rect(0, top, width, 1));
-                    if (decoration.IsBlockEnd) drawingContext.DrawRectangle(decoration.EdgeStroke, null, new Rect(0, top + height - 1, width, 1));
+                    var pen = new Pen(decoration.EdgeStroke, 1.0) { LineJoin = PenLineJoin.Round };
+                    pen.Freeze();
+                    if (decoration.IsBlockStart) drawingContext.DrawLine(pen, new Point(0, top), new Point(width, top));
+                    if (decoration.IsBlockEnd) drawingContext.DrawLine(pen, new Point(0, top + height - 1), new Point(width, top + height - 1));
                 }
                 DrawInline(textView, drawingContext, documentLine, decoration);
             }
@@ -64,8 +64,8 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
 
     private static void DrawBoundaryMarker(DrawingContext drawingContext, Brush brush, double boundaryY, double width)
     {
-        const double thickness = 3;
-        drawingContext.DrawRectangle(brush, null, new Rect(0, boundaryY - thickness / 2, width, thickness));
+        const double thickness = 2;
+        drawingContext.DrawRectangle(brush, null, new Rect(0, Math.Round(boundaryY - thickness / 2), width, thickness));
     }
 
     private static void DrawInline(TextView textView, DrawingContext drawingContext, DocumentLine documentLine, LineDecoration decoration)

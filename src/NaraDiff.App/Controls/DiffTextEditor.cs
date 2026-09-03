@@ -30,6 +30,8 @@ public sealed class DiffTextEditor : TextEditor
         VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto;
         BorderThickness = new Thickness(0);
         Padding = new Thickness(2, 2, 0, 2);
+        var separator = TextArea.LeftMargins.OfType<System.Windows.Shapes.Line>().ToList();
+        foreach (var line in separator) TextArea.LeftMargins.Remove(line);
         TextArea.TextView.BackgroundRenderers.Add(_renderer);
         TextArea.Caret.PositionChanged += (_, _) =>
         {
@@ -50,6 +52,7 @@ public sealed class DiffTextEditor : TextEditor
     /// </summary>
     public void PlaceScrollBarOnTheLeft()
     {
+        Padding = new Thickness(Padding.Right, Padding.Top, Padding.Left, Padding.Bottom);
         FlowDirection = FlowDirection.RightToLeft;
         TextArea.FlowDirection = FlowDirection.LeftToRight;
     }

@@ -30,7 +30,7 @@ public static class RibbonGeometry
     public const double DefaultCurvature = 0.5;
 
     /// <summary>Height used for a block that has no lines on one side, so the ribbon stays visible.</summary>
-    public const double MinimumThickness = 3.0;
+    public const double MinimumThickness = 1.0;
 
     /// <summary>
     /// Builds the ribbon between a left range and a right range. Ranges of different heights are
@@ -63,8 +63,8 @@ public static class RibbonGeometry
         if (bottom < top) (top, bottom) = (bottom, top);
         var height = bottom - top;
         if (height >= MinimumThickness) return (top, bottom);
-        var padding = (MinimumThickness - height) / 2;
-        return (top - padding, bottom + padding);
+        var padding = 0;//(MinimumThickness - height) / 2;
+        return (Math.Round(top - padding), Math.Round(bottom + padding));
     }
 
     /// <summary>Samples a point on a cubic Bezier curve; used for hit testing and for tests.</summary>

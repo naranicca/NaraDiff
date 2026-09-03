@@ -38,7 +38,7 @@ public sealed class FolderCompareOptions
     /// <summary>Glob patterns; matching entries are skipped completely.</summary>
     public List<string> ExcludePatterns { get; set; } = [];
 
-    public FolderContentMode ContentMode { get; set; } = FolderContentMode.BinaryContent;
+    public FolderContentMode ContentMode { get; set; } = FolderContentMode.TextAware;
 
     public int TimeToleranceSeconds { get; set; } = 2;
 
