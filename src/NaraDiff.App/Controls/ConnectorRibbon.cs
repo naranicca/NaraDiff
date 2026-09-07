@@ -123,16 +123,16 @@ public sealed class ConnectorRibbon : FrameworkElement
         var curveWidth = hasExtraRoom ? Math.Min(actualWidth, gutterWidth + MarginWidth(RightEditor)) : gutterWidth;
         foreach (var link in Links)
         {
-            var leftTop = ToLocal(LeftEditor, LeftEditor.GetLineTop(link.LeftStart));
-            var leftBottom = ToLocal(LeftEditor, LeftEditor.GetLineBottom(link.LeftStart + Math.Max(0, link.LeftCount) - 1));
+            var leftTop = ToLocal(LeftEditor, DiffBackgroundRenderer.SnapRowAfterBoundary(LeftEditor.GetLineTop(link.LeftStart)));
+            var leftBottom = ToLocal(LeftEditor, DiffBackgroundRenderer.SnapRowBeforeBoundary(LeftEditor.GetLineBottom(link.LeftStart + Math.Max(0, link.LeftCount) - 1)));
             if (link.LeftCount == 0) leftBottom = leftTop+1;
-            var rightTop = ToLocal(RightEditor, RightEditor.GetLineTop(link.RightStart));
-            var rightBottom = ToLocal(RightEditor, RightEditor.GetLineBottom(link.RightStart + Math.Max(0, link.RightCount) - 1));
+            var rightTop = ToLocal(RightEditor, DiffBackgroundRenderer.SnapRowAfterBoundary(RightEditor.GetLineTop(link.RightStart)));
+            var rightBottom = ToLocal(RightEditor, DiffBackgroundRenderer.SnapRowBeforeBoundary(RightEditor.GetLineBottom(link.RightStart + Math.Max(0, link.RightCount) - 1)));
             if (link.RightCount == 0) rightBottom = rightTop+1;
             var lowest = Math.Max(Math.Max(leftTop, leftBottom), Math.Max(rightTop, rightBottom));
             var highest = Math.Min(Math.Min(leftTop, leftBottom), Math.Min(rightTop, rightBottom));
             if (lowest < -40 || highest > height + 40) continue;
-            var ribbon = RibbonGeometry.Build(leftTop, leftBottom-1, rightTop, rightBottom-1, curveWidth);
+            var ribbon = RibbonGeometry.Build(leftTop, leftBottom, rightTop, rightBottom, curveWidth);
             var shape = BuildGeometry(ribbon);
             _shapes.Add((shape, link));
             if (ShowRibbons)
@@ -140,7 +140,6 @@ public sealed class ConnectorRibbon : FrameworkElement
                 var hovered = ReferenceEquals(link, _hoveredLink);
                 var pen = new Pen(link.Stroke, hovered ? 1.6 : 1.0) { LineJoin = PenLineJoin.Round };
                 pen.Freeze();
-                //drawingContext.DrawGeometry(link.Fill, pen, shape);
                 drawingContext.DrawGeometry(link.Fill, null, shape);
                 drawingContext.DrawGeometry(null, pen, BuildCurveGeometry(ribbon.Top));
                 drawingContext.DrawGeometry(null, pen, BuildCurveGeometry(ribbon.Bottom));
