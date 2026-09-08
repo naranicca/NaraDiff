@@ -120,7 +120,7 @@ public sealed class ConnectorRibbon : FrameworkElement
         var hasExtraRoom = actualWidth > gutterWidth + 1;
         if (!hasExtraRoom) drawingContext.DrawRectangle(ThemeService.Brush("Border"), null, new Rect(gutterWidth - 1, 0, 1, height));
         if (LeftEditor is null || RightEditor is null || Links.Count == 0) return;
-        var curveWidth = hasExtraRoom ? Math.Min(actualWidth, gutterWidth + MarginWidth(RightEditor)) : gutterWidth;
+        var curveWidth = gutterWidth;
         foreach (var link in Links)
         {
             var leftTop = ToLocal(LeftEditor, DiffBackgroundRenderer.SnapRowAfterBoundary(LeftEditor.GetLineTop(link.LeftStart)));
@@ -129,14 +129,14 @@ public sealed class ConnectorRibbon : FrameworkElement
             var rightTop = ToLocal(RightEditor, DiffBackgroundRenderer.SnapRowAfterBoundary(RightEditor.GetLineTop(link.RightStart)));
             var rightBottom = ToLocal(RightEditor, DiffBackgroundRenderer.SnapRowBeforeBoundary(RightEditor.GetLineBottom(link.RightStart + Math.Max(0, link.RightCount) - 1)));
             if (link.RightCount == 0) rightBottom = rightTop+1;
-            var lowest = Math.Max(Math.Max(leftTop, leftBottom), Math.Max(rightTop, rightBottom));
-            var highest = Math.Min(Math.Min(leftTop, leftBottom), Math.Min(rightTop, rightBottom));
-            if (lowest < -40 || highest > height + 40) continue;
+            var showRibbon = ShowRibbons
+                && IntersectsViewport(leftTop, leftBottom, height)
+                && IntersectsViewport(rightTop, rightBottom, height);
             var ribbon = RibbonGeometry.Build(leftTop, leftBottom, rightTop, rightBottom, curveWidth);
-            var shape = BuildGeometry(ribbon);
-            _shapes.Add((shape, link));
-            if (ShowRibbons)
+            if (showRibbon)
             {
+                var shape = BuildGeometry(ribbon);
+                _shapes.Add((shape, link));
                 var hovered = ReferenceEquals(link, _hoveredLink);
                 var pen = new Pen(link.Stroke, hovered ? 1.6 : 1.0) { LineJoin = PenLineJoin.Round };
                 pen.Freeze();
@@ -145,50 +145,53 @@ public sealed class ConnectorRibbon : FrameworkElement
                 drawingContext.DrawGeometry(null, pen, BuildCurveGeometry(ribbon.Bottom));
             }
             if (link.IsConflict) DrawConflictMarker(drawingContext, link, ribbon.CenterY);
-            if (ShowButtons) DrawButtons(drawingContext, link, ribbon.CenterY, gutterWidth);
+            if (ShowButtons) DrawButtons(drawingContext, link, leftTop, leftBottom, rightTop, rightBottom, curveWidth);
         }
     }
 
-    /// <summary>Total width of an editor's left margin (line numbers and any fold or separator margins).</summary>
-    private static double MarginWidth(DiffTextEditor? editor)
+    private static bool IntersectsViewport(double firstY, double secondY, double height)
     {
-        if (editor is null) return 0;
-        try
+        var top = Math.Min(firstY, secondY);
+        var bottom = Math.Max(firstY, secondY);
+        return bottom >= 0 && top <= height;
+    }
+
+    /// <summary>
+    /// Draws each copy action at the ribbon endpoint to the side it changes. This keeps the
+    /// left-pointing action aligned with the left diff block and the right-pointing action aligned
+    /// with the right diff block even when the coreesponding blocks have different heights.
+    /// </summary>
+    private void DrawButtons(DrawingContext drawingContext, ConnectorLink link,
+        double leftTop, double leftBottom, double rightTop, double rightBottom, double ribbonWidth)
+    {
+        if (link.AllowToLeft)
         {
-            return editor.TextArea.TextView.TransformToAncestor(editor).Transform(new Point(0, 0)).X;
+            DrawButton(drawingContext, link, ConnectorDirection.ToLeft,
+                new Rect(Math.Max(0, ribbonWidth - ButtonSize), Midpoint(rightTop, rightBottom) - ButtonSize / 2, ButtonSize, ButtonSize));
         }
-        catch (InvalidOperationException)
+        if (link.AllowToRight)
         {
-            return 0;
+            DrawButton(drawingContext, link, ConnectorDirection.ToRight,
+                new Rect(0, Midpoint(leftTop, leftBottom) - ButtonSize / 2, ButtonSize, ButtonSize));
         }
     }
 
-    private void DrawButtons(DrawingContext drawingContext, ConnectorLink link, double centerY, double width)
+    private void DrawButton(DrawingContext drawingContext, ConnectorLink link, ConnectorDirection direction, Rect bounds)
     {
-        var actions = new List<ConnectorDirection>();
-        if (link.AllowToRight) actions.Add(ConnectorDirection.ToRight);
-        if (link.AllowToLeft) actions.Add(ConnectorDirection.ToLeft);
-        if (actions.Count == 0) return;
-        var total = actions.Count * ButtonSize + (actions.Count - 1) * ButtonGap;
-        var x = (width - total) / 2;
-        var y = centerY - ButtonSize / 2;
-        foreach (var direction in actions)
-        {
-            var bounds = new Rect(x, y, ButtonSize, ButtonSize);
-            var index = _buttons.Count;
-            _buttons.Add((bounds, link, direction));
-            var hovered = _hoveredButton == index;
-            var background = hovered ? ThemeService.Brush("Accent") : ThemeService.Brush("SurfaceRaised");
-            var foreground = hovered ? ThemeService.Brush("AccentText") : link.Stroke;
-            var borderPen = new Pen(hovered ? ThemeService.Brush("Accent") : link.Stroke, 1);
-            borderPen.Freeze();
-            drawingContext.DrawRoundedRectangle(background, borderPen, bounds, 4, 4);
-            var glyphPen = new Pen(foreground, 1.5) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
-            glyphPen.Freeze();
-            DrawArrow(drawingContext, bounds, direction, glyphPen);
-            x += ButtonSize + ButtonGap;
-        }
+        var index = _buttons.Count;
+        _buttons.Add((bounds, link, direction));
+        var hovered = _hoveredButton == index;
+        var background = hovered ? ThemeService.Brush("Accent") : ThemeService.Brush("SurfaceRaised");
+        var foreground = hovered ? ThemeService.Brush("AccentText") : link.Stroke;
+        var borderPen = new Pen(hovered ? ThemeService.Brush("Accent") : link.Stroke, 1);
+        borderPen.Freeze();
+        drawingContext.DrawRoundedRectangle(background, borderPen, bounds, 4, 4);
+        var glyphPen = new Pen(foreground, 1.5) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
+        glyphPen.Freeze();
+        DrawArrow(drawingContext, bounds, direction, glyphPen);
     }
+
+    private static double Midpoint(double top, double bottom) => top + (bottom - top) / 2;
 
     private static void DrawArrow(DrawingContext drawingContext, Rect bounds, ConnectorDirection direction, Pen pen)
     {

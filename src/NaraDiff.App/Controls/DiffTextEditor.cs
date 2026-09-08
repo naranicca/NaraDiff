@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Editing;
 using NaraDiff.App.Services;
 using NaraDiff.Core.Settings;
 using NaraDiff.Core.Text;
@@ -15,6 +16,8 @@ namespace NaraDiff.App.Controls;
 public sealed class DiffTextEditor : TextEditor
 {
     private readonly DiffBackgroundRenderer _renderer = new();
+
+    private readonly DiffLineNumberMargin _lineNumberMargin;
 
     public DiffTextEditor()
     {
@@ -32,6 +35,10 @@ public sealed class DiffTextEditor : TextEditor
         Padding = new Thickness(2, 2, 0, 2);
         var separator = TextArea.LeftMargins.OfType<System.Windows.Shapes.Line>().ToList();
         foreach (var line in separator) TextArea.LeftMargins.Remove(line);
+        _lineNumberMargin = new DiffLineNumberMargin(_renderer) { Margin = new Thickness(0, 0, 4, 0) };
+        var existingLineNumberMargin = TextArea.LeftMargins.OfType<LineNumberMargin>().FirstOrDefault();
+        if (existingLineNumberMargin is null) TextArea.LeftMargins.Insert(0, _lineNumberMargin);
+        else TextArea.LeftMargins[TextArea.LeftMargins.IndexOf(existingLineNumberMargin)] = _lineNumberMargin;
         TextArea.TextView.BackgroundRenderers.Add(_renderer);
         TextArea.Caret.PositionChanged += (_, _) =>
         {
@@ -120,7 +127,11 @@ public sealed class DiffTextEditor : TextEditor
         Redraw();
     }
 
-    public void Redraw() => TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
+    public void Redraw()
+    {
+        TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
+        _lineNumberMargin.InvalidateVisual();
+    }
 
     /// <summary>Replaces the whole document without adding an undo step for the load.</summary>
     public void SetContent(string text)
