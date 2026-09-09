@@ -45,7 +45,14 @@ public static class InlineDiff
         {
             var start = left ? change.LeftStart : change.RightStart;
             var count = left ? change.LeftCount : change.RightCount;
-            if (count == 0) continue;
+            if (count == 0)
+            {
+                // Preserve the insertion point on the other side so a missing inline token can
+                // be rendered as a small marker instead of disappearing entirely.
+                var insertionPoint = start < tokens.Count ? tokens[start].Start : tokens.Count == 0 ? 0 : tokens[^1].Start + tokens[^1].Length;
+                spans.Add(new TextSpan(insertionPoint, 0));
+                continue;
+            }
             var first = tokens[start];
             var last = tokens[start + count - 1];
             var span = new TextSpan(first.Start, last.Start + last.Length - first.Start);

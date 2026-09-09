@@ -1,7 +1,10 @@
 using System.Windows;
+using ICSharpCode.AvalonEdit;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Editing;
 using ICSharpCode.AvalonEdit.Rendering;
+using System.Reflection.Metadata;
 
 namespace NaraDiff.App.Controls;
 
@@ -83,12 +86,21 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
         if (decoration.Inline is null || decoration.InlineBrush is null) return;
         foreach (var span in decoration.Inline)
         {
-            var start = documentLine.Offset + Math.Max(0, span.Start);
+            var start = documentLine.Offset + Math.Clamp(span.Start, 0, documentLine.Length);
             var end = Math.Min(documentLine.EndOffset, documentLine.Offset + span.End);
+            if (span.Length == 0)
+            {
+                // A deletion has no characters on this side. Mark its exact insertion boundary
+                // so a missing word, such as "b" in "a b c" versus "a c", remains visible.
+                var position = textView.GetVisualPosition(new TextViewPosition(documentLine.LineNumber, start - documentLine.Offset + 1), VisualYPosition.LineTop);
+                drawingContext.DrawRoundedRectangle(decoration.InlineBrush, NoPen,
+                    new Rect(position.X - 1, position.Y, 3, textView.DefaultLineHeight), 1.5, 1.5);
+                continue;
+            }
             if (end <= start) continue;
             var segment = new TextSegment { StartOffset = start, EndOffset = end };
             foreach (var rectangle in BackgroundGeometryBuilder.GetRectsForSegment(textView, segment))
-            drawingContext.DrawRoundedRectangle(decoration.InlineBrush, NoPen, rectangle, 2, 2);
+                drawingContext.DrawRoundedRectangle(decoration.InlineBrush, NoPen, rectangle, 2, 2);
         }
     }
 
