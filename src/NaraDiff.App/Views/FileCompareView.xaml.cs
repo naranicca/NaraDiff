@@ -102,6 +102,8 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     public event EventHandler? StatusChanged;
 
+    public event EventHandler<(string? Left, string? Right)>? FolderComparisonRequested;
+
     public string Title
     {
         get
@@ -226,12 +228,27 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     {
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
         e.Handled = true;
-        var files = paths.Where(System.IO.File.Exists).ToArray();
-        if (files.Length == 0)
+        var folder = paths.FirstOrDefault(System.IO.Directory.Exists);
+        if (folder is not null)
         {
-            ShowNotice("Folders can't be dropped here; use folder comparison to compare directories.", null);
+            var target = droppedOnLeft ? LeftEditor : RightEditor;
+            var other = droppedOnLeft ? RightEditor : LeftEditor;
+            if (!string.IsNullOrEmpty(other.FilePath))
+            {
+                ShowNotice("A folder cannot be compared with the file already open on the other side.", null);
+                return;
+            }
+            if (!string.IsNullOrEmpty(target.FilePath))
+            {
+                ShowNotice("Clear the open file before switching this comparison to folders.", null);
+                return;
+            }
+            FolderComparisonRequested?.Invoke(this, droppedOnLeft ? (Left: folder, Right: (string?)null) : (Left: (string?)null, Right: folder));
             return;
         }
+
+        var files = paths.Where(System.IO.File.Exists).ToArray();
+        if (files.Length == 0) return;
         if (files.Length >= 2) _ = OpenAsync(files[0], files[1]);
         else _ = LoadSideAsync(droppedOnLeft, files[0]);
     }

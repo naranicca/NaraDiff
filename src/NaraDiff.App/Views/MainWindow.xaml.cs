@@ -133,8 +133,19 @@ public partial class MainWindow : Window
     private async Task NewFileCompareAsync(string? left, string? right)
     {
         var view = new FileCompareView(_settings, _logger);
+        view.FolderComparisonRequested += async (_, pair) => await SwitchToFolderCompareAsync(view, pair.Left, pair.Right);
         AddTab(view, view);
         await view.OpenAsync(left, right);
+    }
+
+    private async Task SwitchToFolderCompareAsync(FileCompareView source, string? left, string? right)
+    {
+        var item = Tabs.Items.OfType<TabItem>().FirstOrDefault(tab => ReferenceEquals(tab.Content, source));
+        if (item is null) return;
+        Tabs.Items.Remove(item);
+        source.Close();
+        EmptyHint.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        await NewFolderCompareAsync(left, right);
     }
 
     private async Task NewFolderCompareAsync(string? left, string? right)
