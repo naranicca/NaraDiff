@@ -1,6 +1,8 @@
+using System.DirectoryServices.ActiveDirectory;
 using System.Windows;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit.Editing;
+using ICSharpCode.AvalonEdit.Rendering;
 
 namespace NaraDiff.App.Controls;
 
@@ -19,23 +21,38 @@ internal sealed class DiffLineNumberMargin(DiffBackgroundRenderer renderer) : Li
             // Paint through it so a changed block remains visually continuous.
             var width = Math.Max(ActualWidth + Margin.Right, 0);
             var scroll = textView.ScrollOffset.Y;
+            VisualLine? lastVisualLine = null;
             foreach (var visualLine in textView.VisualLines)
             {
                 var lineIndex = visualLine.FirstDocumentLine.LineNumber - 1;
-                if (!renderer.Decorations.TryGet(lineIndex, out var decoration) || decoration is null) continue;
                 var topRaw = visualLine.VisualTop - scroll;
                 var top = Math.Round(topRaw, MidpointRounding.AwayFromZero);
-                var height = Math.Round(topRaw + visualLine.Height, MidpointRounding.AwayFromZero) - top;
-                drawingContext.DrawRectangle(decoration.Fill, null, new Rect(0, top, width, height));
-                if (decoration.EdgeStroke is null) continue;
-                var pen = new Pen(decoration.EdgeStroke, 1.0);
-                pen.Freeze();
-                if (decoration.IsBlockStart)
-                    drawingContext.DrawLine(pen, new Point(0, DiffBackgroundRenderer.SnapRowAfterBoundary(topRaw)), new Point(width, DiffBackgroundRenderer.SnapRowAfterBoundary(topRaw)));
-                if (decoration.IsBlockEnd)
-                    drawingContext.DrawLine(pen, new Point(0, DiffBackgroundRenderer.SnapRowBeforeBoundary(topRaw + visualLine.Height)), new Point(width, DiffBackgroundRenderer.SnapRowBeforeBoundary(topRaw + visualLine.Height)));
+                if (renderer.Decorations.TryGet(lineIndex, out var decoration) && decoration is not null)
+                {
+                    var height = Math.Round(topRaw + visualLine.Height, MidpointRounding.AwayFromZero) - top;
+                    drawingContext.DrawRectangle(decoration.Fill, null, new Rect(0, top, width, height));
+                    if (decoration.EdgeStroke is not null)
+                    {
+                        var pen = new Pen(decoration.EdgeStroke, 1.0);
+                        pen.Freeze();
+                        if (decoration.IsBlockStart)
+                            drawingContext.DrawLine(pen, new Point(0, DiffBackgroundRenderer.SnapRowAfterBoundary(topRaw)), new Point(width, DiffBackgroundRenderer.SnapRowAfterBoundary(topRaw)));
+                        if (decoration.IsBlockEnd)
+                            drawingContext.DrawLine(pen, new Point(0, DiffBackgroundRenderer.SnapRowBeforeBoundary(topRaw + visualLine.Height)), new Point(width, DiffBackgroundRenderer.SnapRowBeforeBoundary(topRaw + visualLine.Height)));
+                    }
+                }
+                if (renderer.Decorations.TryGetBoundaryMarker(lineIndex, out var markerBrush) && markerBrush is not null)
+                    DrawBoundaryMarker(drawingContext, markerBrush, top, width);
+                lastVisualLine = visualLine;
             }
+            if (lastVisualLine is not null && renderer.Decorations.TryGetBoundaryMarker(textView.Document.LineCount, out var endMarkerBrush) && endMarkerBrush is not null)
+                DrawBoundaryMarker(drawingContext, endMarkerBrush, DiffBackgroundRenderer.SnapRowAfterBoundary(lastVisualLine.VisualTop - scroll), width);
         }
         base.OnRender(drawingContext);
+    }
+
+    private static void DrawBoundaryMarker(DrawingContext drawingContext, Brush brush, double y, double width)
+    {
+        drawingContext.DrawRectangle(brush, null, new Rect(0, y, width, 2));
     }
 }
