@@ -15,11 +15,11 @@
 
     <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
+        <ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
       </Grid.ColumnDefinitions>
       <controls:FilePaneHeader x:Name="LeftHeader" Grid.Column="0" Role="Left"/>
       <Border Grid.Column="1" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
-        <controls:IconButton x:Name="SwapButton" Icon="{DynamicResource IconSwap}" ToolTip="Swap the two sides" VerticalAlignment="Center" Click="Swap_Click"/>
+        <controls:IconButton x:Name="SwapButton" Icon="{DynamicResource IconSwap}" ToolTip="Swap the two sides" HorizontalContentAlignment="Center" VerticalAlignment="Center" Click="Swap_Click"/>
       </Border>
       <controls:FilePaneHeader x:Name="RightHeader" Grid.Column="2" Role="Right"/>
       <Border Grid.Column="3" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1"/>
@@ -59,11 +59,11 @@
 
     <Grid Grid.Row="3">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
+        <ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
       </Grid.ColumnDefinitions>
       <controls:DiffTextEditor x:Name="LeftEditor" Grid.Column="0"/>
       <controls:DiffTextEditor x:Name="RightEditor" Grid.Column="2"/>
-      <controls:ConnectorRibbon x:Name="Connector" Grid.Column="1" Grid.ColumnSpan="2" Panel.ZIndex="1" GutterWidth="58"/>
+      <controls:ConnectorRibbon x:Name="Connector" Grid.Column="1" Grid.ColumnSpan="2" Panel.ZIndex="1" GutterWidth="100"/>
       <controls:OverviewRuler x:Name="Ruler" Grid.Column="3"/>
       <Border x:Name="BusyOverlay" Grid.ColumnSpan="4" Visibility="Collapsed" Background="#40000000">
         <Border Style="{DynamicResource Card}" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20,14">

@@ -51,6 +51,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         _options = settings.DiffOptions.Sanitized();
         InitializeComponent();
         LeftEditor.PlaceScrollBarOnTheLeft();
+        RightEditor.Padding = new Thickness(0, RightEditor.Padding.Top, RightEditor.Padding.Right, RightEditor.Padding.Bottom);
 
         LeftHeader.BrowseRequested += (_, _) => Browse(true);
         RightHeader.BrowseRequested += (_, _) => Browse(false);
