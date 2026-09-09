@@ -96,6 +96,7 @@ public partial class MainWindow : Window
             Margin = new Thickness(6, 0, -4, 0),
             Height = 20,
             MinWidth = 20,
+            LayoutTransform = new System.Windows.Media.ScaleTransform(0.5, 0.5),
             ToolTip = "Close this comparison (Ctrl+W)"
         };
         close.Click += (_, _) => CloseTab(item);

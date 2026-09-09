@@ -286,12 +286,13 @@
 
   <Style TargetType="TabItem">
     <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+    <Setter Property="Opacity" Value="0.78"/>
     <Setter Property="FontFamily" Value="Segoe UI"/>
     <Setter Property="FontSize" Value="12"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="TabItem">
-          <Border x:Name="Surface" Background="Transparent" BorderThickness="0,0,0,2" BorderBrush="Transparent" Padding="12,6" Margin="0,0,2,0" CornerRadius="6,6,0,0">
+          <Border x:Name="Surface" Background="Transparent" BorderThickness="0" BorderBrush="Transparent" Padding="12,6" Margin="0,0,2,0" CornerRadius="3,3,0,0">
             <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>
@@ -300,6 +301,7 @@
               <Setter TargetName="Surface" Property="Background" Value="{DynamicResource SurfaceAlt}"/>
               <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Accent}"/>
               <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+              <Setter Property="Opacity" Value="1"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -316,8 +318,8 @@
         <ControlTemplate TargetType="TabControl">
           <Grid>
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-            <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
-              <TabPanel IsItemsHost="True" Margin="8,6,8,0" Panel.ZIndex="1"/>
+            <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="0">
+              <TabPanel IsItemsHost="True" Margin="8,2,8,0" Panel.ZIndex="1"/>
             </Border>
             <Border Grid.Row="1" Background="{DynamicResource SurfaceAlt}">
               <ContentPresenter ContentSource="SelectedContent"/>
