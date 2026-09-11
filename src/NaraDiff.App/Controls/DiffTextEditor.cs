@@ -35,7 +35,7 @@ public sealed class DiffTextEditor : TextEditor
         {
             var offset = TextArea.TextView.ScrollOffset;
             ScrollToVerticalOffset(Math.Max(0, offset.Y + delta.Y));
-            ScrollToHorizontalOffset(Math.Max(0, offlet.X + delta.X));
+            ScrollToHorizontalOffset(Math.Max(0, offset.X + delta.X));
         });
         ShowLineNumbers = true;
         Options.HighlightCurrentLine = false;
@@ -107,7 +107,7 @@ public sealed class DiffTextEditor : TextEditor
         ScrollToVerticalOffset(Math.Max(0, _stylusScrollStart.Y - delta.Y));
         ScrollToHorizontalOffset(Math.Max(0, _stylusScrollStart.X - delta.X));
         var now = TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
-        var elapsedMilliseconds = (now - _lastStylusPanTime).TotalMicroseconds;
+        var elapsedMilliseconds = (now - _lastStylusPanTime).TotalMilliseconds;
         if (elapsedMilliseconds > 0)
         {
             var movement = e.GetPosition(this) - _lastStylusPanPoint;
@@ -127,7 +127,7 @@ public sealed class DiffTextEditor : TextEditor
         EndStylusPan();
         if (wasPanning)
         {
-            _stylusIntertia.Start(velocity);
+            _stylusInertia.Start(velocity);
             e.Handled = true;
         }
     }

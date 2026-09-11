@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.DirectoryServices;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -72,7 +71,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private bool _disposed;
     private StylusDevice? _panningStylus;
     private Point _stylusPanStart;
-    private Vector _stylusScrollStart;
+    private Point _stylusScrollStart;
     private Point _lastStylusPanPoint;
     private TimeSpan _lastStylusPanTime;
     private Vector _stylusVelocity;
@@ -90,9 +89,9 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _stylusInertia = new InertialPan(delta =>
         {
             var scrollViewer = FindDescendant<ScrollViewer>(Tree);
-            if (ScrollViewer is null) return;
-            ScrollViewer.ScrollToVerticalOffset(Math.Max(0, ScrollViewer.VerticalOffset + delta.Y));
-            ScrollViewer.ScrollToHorizontalOffset(Math.Max(0, ScrollViewer.HorizontalOffset + delta.X));
+            if (scrollViewer is null) return;
+            scrollViewer.ScrollToVerticalOffset(Math.Max(0, scrollViewer.VerticalOffset + delta.Y));
+            scrollViewer.ScrollToHorizontalOffset(Math.Max(0, scrollViewer.HorizontalOffset + delta.X));
         });
         _suppressEvents = true;
         foreach (var (label, _) in ContentModes) ContentModeBox.Items.Add(label);
@@ -208,7 +207,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private void Tree_StylusPanMove(object sender, StylusEventArgs e)
     {
-        if (e.StylusDevice.TabletDevice.Type != TabletDeviceType.Stylus) return;
+        if (!ReferenceEquals(e.StylusDevice, _panningStylus)) return;
         var delta = e.GetPosition(Tree) - _stylusPanStart;
         if (!_isStylusPanning && delta.Length < 3) return;
         var scrollViewer = FindDescendant<ScrollViewer>(Tree);
@@ -244,7 +243,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private void EndTreeStylusPan()
     {
-        if (Tree.IsStylusCaptured) ReleaseStylusCapture();
+        if (Tree.IsStylusCaptured) Tree.ReleaseStylusCapture();
         _panningStylus = null;
         _isStylusPanning = false;
     }
