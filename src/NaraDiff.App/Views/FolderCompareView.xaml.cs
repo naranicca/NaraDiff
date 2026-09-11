@@ -1,9 +1,12 @@
+using System.Diagnostics;
+using System.DirectoryServices;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
+using NaraDiff.App.Controls;
 using NaraDiff.App.Services;
 using NaraDiff.Core.Diff;
 using NaraDiff.Core.Folders;
@@ -67,6 +70,14 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private CancellationTokenSource? _comparison;
     private bool _suppressEvents;
     private bool _disposed;
+    private StylusDevice? _panningStylus;
+    private Point _stylusPanStart;
+    private Vector _stylusScrollStart;
+    private Point _lastStylusPanPoint;
+    private TimeSpan _lastStylusPanTime;
+    private Vector _stylusVelocity;
+    private bool _isStylusPanning;
+    private readonly InertialPan _stylusInertia;
 
     public FolderCompareView(AppSettings settings, FileLogger logger)
     {
@@ -76,6 +87,13 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _logger = logger;
         _diffOptions = settings.DiffOptions.Sanitized();
         InitializeComponent();
+        _stylusInertia = new InertialPan(delta =>
+        {
+            var scrollViewer = FindDescendant<ScrollViewer>(Tree);
+            if (ScrollViewer is null) return;
+            ScrollViewer.ScrollToVerticalOffset(Math.Max(0, ScrollViewer.VerticalOffset + delta.Y));
+            ScrollViewer.ScrollToHorizontalOffset(Math.Max(0, ScrollViewer.HorizontalOffset + delta.X));
+        });
         _suppressEvents = true;
         foreach (var (label, _) in ContentModes) ContentModeBox.Items.Add(label);
         var options = settings.FolderOptions;
@@ -85,6 +103,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         CaseBox.IsChecked = options.CaseSensitiveNames;
         ExcludeBox.Text = string.Join(";", options.ExcludePatterns);
         _suppressEvents = false;
+        Tree.PreviewStylusDown += TreeStylusPanDown;
+        Tree.PreviewStylusMove += TreeStylusPanMove;
+        Tree.PreviewStylusUp += TreeStylusPanUp;
+        Tree.LostStylusCapture += (_, _) => EndTreeStylusPan();
         foreach (var (box, left) in new[] { (LeftPathBox, true), (RightPathBox, false) })
         {
             var isLeft = left;
@@ -164,8 +186,79 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         if (_disposed) return;
         _disposed = true;
+        _stylusInertia.Stop();
         _comparison?.Cancel();
         _comparison?.Dispose();
+    }
+
+    private void Tree_StylusPanDown(object sender, StylusDownEventArgs e)
+    {
+        if (e.StylusDevice.TabletDevice.Type != TabletDeviceType.Stylus) return;
+        var scrollViewer = FindDescendant<ScrollViewer>(Tree);
+        if (scrollViewer is null) return;
+        _stylusInertia.Stop();
+        _panningStylus = e.StylusDevice;
+        _stylusPanStart = e.GetPosition(Tree);
+        _lastStylusPanPoint = _stylusPanStart;
+        _lastStylusPanTime = TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
+        _stylusVelocity = new Vector();
+        _stylusScrollStart = new Point(scrollViewer.HorizontalOffset, scrollViewer.VerticalOffset);
+        _isStylusPanning = false;
+    }
+
+    private void Tree_StylusPanMove(object sender, StylusDownEventArgs e)
+    {
+        if (e.StylusDevice.TabletDevice.Type != TabletDeviceType.Stylus) return;
+        var delta = e.GetPosition(Tree) - _stylusPanStart;
+        if (!_isStylusPanning && delta.Length < 3) return;
+        var scrollViewer = FindDescendant<ScrollViewer>(Tree);
+        if (scrollViewer is null) return;
+        var position = e.GetPosition(Tree);
+        var now = TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
+        var elapsedMilliseconds = (now - _lastStylusPanTime).TotalMilliseconds;
+        if (elapsedMilliseconds > 0)
+        {
+            var movement = position - _lastStylusPanPoint;
+            var instantaneousVelocity = new Vector(-movement.X / elapsedMilliseconds, -movement.Y / elapsedMilliseconds);
+            _stylusVelocity = _stylusVelocity * 0.35 + instantaneousVelocity * 0.65;
+        }
+        _lastStylusPanPoint = position;
+        _lastStylusPanTime = now;
+        _isStylusPanning = true;
+        if (!Tree.IsStylusCaptured) Tree.CaptureStylus();
+        scrollViewer.ScrollToVerticalOffset(Math.Max(0, _stylusScrollStart.Y - delta.Y));
+        scrollViewer.ScrollToHorizontalOffset(Math.Max(0, _stylusScrollStart.X - delta.X));
+        e.Handled = true;
+    }
+
+    private void Tree_StylusPanUp(object sender, StylusDownEventArgs e)
+    {
+        if (!ReferenceEquals(e.StylusDevice, _panningStylus)) return;
+        var wasPanning = _isStylusPanning;
+        var velocity = _stylusVelocity;
+        EndTreeStylusPan();
+        if (!wasPanning) return;
+        _stylusInertia.Start(velocity);
+        e.Handled = true;
+    }
+
+    private void EndTreeStylusPan()
+    {
+        if (Tree.IsStylusCaptured) ReleaseStylusCapture();
+        _panningStylus = null;
+        _isStylusPanning = false;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match) return match;
+            var nested = FindDescendant<T>(child);
+            if (nested is not null) return nested;
+        }
+        return null;
     }
 
     private FolderCompareOptions CurrentOptions() => new()
