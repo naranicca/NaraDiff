@@ -103,9 +103,9 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         CaseBox.IsChecked = options.CaseSensitiveNames;
         ExcludeBox.Text = string.Join(";", options.ExcludePatterns);
         _suppressEvents = false;
-        Tree.PreviewStylusDown += TreeStylusPanDown;
-        Tree.PreviewStylusMove += TreeStylusPanMove;
-        Tree.PreviewStylusUp += TreeStylusPanUp;
+        Tree.PreviewStylusDown += Tree_StylusPanDown;
+        Tree.PreviewStylusMove += Tree_StylusPanMove;
+        Tree.PreviewStylusUp += Tree_StylusPanUp;
         Tree.LostStylusCapture += (_, _) => EndTreeStylusPan();
         foreach (var (box, left) in new[] { (LeftPathBox, true), (RightPathBox, false) })
         {
@@ -206,7 +206,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _isStylusPanning = false;
     }
 
-    private void Tree_StylusPanMove(object sender, StylusDownEventArgs e)
+    private void Tree_StylusPanMove(object sender, StylusEventArgs e)
     {
         if (e.StylusDevice.TabletDevice.Type != TabletDeviceType.Stylus) return;
         var delta = e.GetPosition(Tree) - _stylusPanStart;
@@ -231,7 +231,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         e.Handled = true;
     }
 
-    private void Tree_StylusPanUp(object sender, StylusDownEventArgs e)
+    private void Tree_StylusPanUp(object sender, StylusEventArgs e)
     {
         if (!ReferenceEquals(e.StylusDevice, _panningStylus)) return;
         var wasPanning = _isStylusPanning;
