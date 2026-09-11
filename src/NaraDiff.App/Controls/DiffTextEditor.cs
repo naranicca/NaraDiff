@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Document;
@@ -18,9 +20,23 @@ public sealed class DiffTextEditor : TextEditor
     private readonly DiffBackgroundRenderer _renderer = new();
 
     private readonly DiffLineNumberMargin _lineNumberMargin;
+    private StylusDevice? _panningStylus;
+    private Point _stylusPanStart;
+    private Vector _stylusScrollStart;
+    private Point _lastStylusPanPoint;
+    private TimeSpan _lastStylusPanTime;
+    private Vector _stylusVelocity;
+    private bool _isStylusPanning;
+    private readonly InertialPan _stylusInertia;
 
     public DiffTextEditor()
     {
+        _stylusInertia = new InertialPan(delta =>
+        {
+            var offset = TextArea.TextView.ScrollOffset;
+            ScrollToVerticalOffset(Math.Max(0, offset.Y + delta.Y));
+            ScrollToHorizontalOffset(Math.Max(0, offset.X + delta.X));
+        });
         ShowLineNumbers = true;
         Options.HighlightCurrentLine = false;
         Options.EnableHyperlinks = false;
@@ -48,6 +64,10 @@ public sealed class DiffTextEditor : TextEditor
         };
         TextArea.TextView.ScrollOffsetChanged += (_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
         SizeChanged += (_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
+        PreviewStylusDown += OnStylusPanDown;
+        PreviewStylusMove += OnStylusPanMove;
+        PreviewStylusUp += OnStylusPanUp;
+        LostStylusCapture += (_, _) => EndStylusPan();
     }
 
     /// <summary>
@@ -64,6 +84,61 @@ public sealed class DiffTextEditor : TextEditor
         TextArea.FlowDirection = FlowDirection.LeftToRight;
     }
     
+    private void OnStylusPanDown(object sender, StylusDownEventArgs e)
+    {
+        if (e.StylusDevice.TabletDevice.Type != TabletDeviceType.Stylus) return;
+        _stylusInertia.Stop();
+        _panningStylus = e.StylusDevice;
+        _stylusPanStart = e.GetPosition(this);
+        _lastStylusPanPoint = _stylusPanStart;
+        _lastStylusPanTime = TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
+        _stylusVelocity = new Vector();
+        _stylusScrollStart = TextArea.TextView.ScrollOffset;
+        _isStylusPanning = false;
+    }
+
+    private void OnStylusPanMove(object sender, StylusEventArgs e)
+    {
+        if (!ReferenceEquals(e.StylusDevice, _panningStylus)) return;
+        var delta = e.GetPosition(this) - _stylusPanStart;
+        if (!_isStylusPanning && delta.Length < 3) return;
+        _isStylusPanning = true;
+        if (!IsStylusCaptured) CaptureStylus();
+        ScrollToVerticalOffset(Math.Max(0, _stylusScrollStart.Y - delta.Y));
+        ScrollToHorizontalOffset(Math.Max(0, _stylusScrollStart.X - delta.X));
+        var now = TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
+        var elapsedMilliseconds = (now - _lastStylusPanTime).TotalMilliseconds;
+        if (elapsedMilliseconds > 0)
+        {
+            var movement = e.GetPosition(this) - _lastStylusPanPoint;
+            var instantaneousVelocity = new Vector(-movement.X / elapsedMilliseconds, -movement.Y / elapsedMilliseconds);
+            _stylusVelocity = _stylusVelocity * 0.35 + instantaneousVelocity * 0.65;
+        }
+        _lastStylusPanPoint = e.GetPosition(this);
+        _lastStylusPanTime = now;
+        e.Handled = true;
+    }
+
+    private void OnStylusPanUp(object sender, StylusEventArgs e)
+    {
+        if (!ReferenceEquals(e.StylusDevice, _panningStylus)) return;
+        var wasPanning = _isStylusPanning;
+        var velocity = _stylusVelocity;
+        EndStylusPan();
+        if (wasPanning)
+        {
+            _stylusInertia.Start(velocity);
+            e.Handled = true;
+        }
+    }
+
+    private void EndStylusPan()
+    {
+        if (IsStylusCaptured) ReleaseStylusCapture();
+        _panningStylus = null;
+        _isStylusPanning = false;
+    }
+
     /// <summary>Raised when the visible region changed and the connectors must be recalculated.</summary>
     public event EventHandler? ViewChanged;
 
