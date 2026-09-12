@@ -72,6 +72,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private DiffOptions _diffOptions;
     private FolderComparisonResult? _result;
     private CancellationTokenSource? _comparison;
+    private GitWorktreeComparer? _gitComparison;
     private bool _suppressEvents;
     private bool _disposed;
     private StylusDevice? _panningStylus;
@@ -148,7 +149,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         if (!string.IsNullOrWhiteSpace(leftPath)) LeftPathBox.Text = leftPath;
         if (!string.IsNullOrWhiteSpace(rightPath)) RightPathBox.Text = rightPath;
-        if (Directory.Exists(LeftPathBox.Text) && Directory.Exists(RightPathBox.Text)) await CompareAsync();
+        if (Directory.Exists(LeftPathBox.Text) || Directory.Exists(RightPathBox.Text)) await CompareAsync();
     }
 
     public void ApplySettings(AppSettings settings)
@@ -193,6 +194,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _stylusInertia.Stop();
         _comparison?.Cancel();
         _comparison?.Dispose();
+        _gitComparison?.Dispose();
     }
 
     private void Tree_StylusPanDown(object sender, StylusDownEventArgs e)
@@ -280,11 +282,31 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         var left = LeftPathBox.Text.Trim();
         var right = RightPathBox.Text.Trim();
+        var singleFolder = Directory.Exists(left) && string.IsNullOrWhiteSpace(right)
+            ? left
+            : Directory.Exists(right) && string.IsNullOrWhiteSpace(left) ? right : null;
+        if (singleFolder is not null)
+        {
+            _gitComparison?.Dispose();
+            _gitComparison = await GitWorktreeComparer.CreateAsync(singleFolder, CancellationToken.None);
+            if (_gitComparison is null)
+            {
+                SetFooter("Enter both folders, or select a Git repository to view its working-tree changes.");
+                return;
+            }
+            _result = _gitComparison.Result;
+            RebuildTree();
+            SetFooter("Git changes: HEAD — working tree");
+            TitleChanged?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         if (!Directory.Exists(left) || !Directory.Exists(right))
         {
             SetFooter("Both folders must exist before they can be compared.");
             return;
         }
+        _gitComparison?.Dispose();
+        _gitComparison = null;
         _comparison?.Cancel();
         _comparison?.Dispose();
         var source = new CancellationTokenSource();
@@ -420,7 +442,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         var dialog = new OpenFolderDialog { Title = "Select a folder" };
         if (Directory.Exists(target.Text)) dialog.InitialDirectory = target.Text;
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true) target.Text = dialog.FolderName;
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        target.Text = dialog.FolderName;
+        if (ReferenceEquals(target, LeftPathBox) && string.IsNullOrWhiteSpace(RightPathBox.Text)) _ = CompareAsync();
+        if (ReferenceEquals(target, RightPathBox) && string.IsNullOrWhiteSpace(LeftPathBox.Text)) _ = CompareAsync();
     }
 
     private static void SetFolderDropEffect(DragEventArgs e)
