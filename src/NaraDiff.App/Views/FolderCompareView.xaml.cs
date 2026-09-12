@@ -26,6 +26,11 @@ public sealed class FolderRow
     /// <summary>File extension, or folder for directories.</summary>
     public required string TypeText { get; init; }
 
+    /// <summary>Glyph selected from the entry kind and its file extension.</summary>
+    public required string IconGlyph { get; init; }
+
+    public bool  IsDirectory { get; init; }
+
     public required Brush StatusFill { get; init; }
 
     public required Brush StatusStroke { get; init; }
@@ -352,6 +357,8 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             Name = entry.Name,
             StatusText = StatusLabel(entry.Status),
             TypeText = entry.IsDirectory ? "folder" : entry.Extension.TrimStart('.'),
+            IconGlyph = IconFor(entry),
+            IsDirectory = entry.IsDirectory,
             StatusFill = entry.Status == FolderEntryStatus.Same ? Brushes.Transparent : palette.FillFor(entry.Status),
             StatusStroke = entry.Status == FolderEntryStatus.Same ? ThemeService.Brush("TextDisabled") : palette.StrokeFor(entry.Status),
             Indent = new Thickness(depth * 16, 0, 0, 0),
@@ -364,6 +371,20 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         };
         result.Children.AddRange(children);
         return result;
+    }
+
+    private static string IconFor(FolderEntry entry)
+    {
+        if (entry.IsDirectory) return "\uE8B7";
+        return entry.Extension.ToLowerInvariant() switch
+        {
+            ".cs" or ".csproj" or ".sln" or ".json" or ".xml" or ".xaml" or ".html" or ".css" or ".js" or ".ts" or ".py" or ".cpp" or ".h" => "\uE943",
+            ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".svg" or ".ico" or ".webp" => "\uEB9F",
+            ".mp3" or ".wav" or ".flac" or ".mp4" or ".mkv" or ".avi" or ".mov" => "\uE8B1",
+            ".zip" or ".7z" or ".rar" or ".tar" or ".gz" => "\uE012",
+            ".txt" or ".md" or ".log" or ".pdf" or ".doc" or ".docx" or ".xls" or ".ppt" or ".pptx" => "\uE8A5",
+            _ => "\uE8A55"
+        };
     }
 
     private static string StatusLabel(FolderEntryStatus status) => status switch

@@ -65,7 +65,7 @@
           <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="96"/><ColumnDefinition Width="90"/>
           <ColumnDefinition Width="132"/><ColumnDefinition Width="90"/><ColumnDefinition Width="132"/>
         </Grid.ColumnDefinitions>
-        <TextBlock Text="Name" Style="{StaticResource ColumnHeader}" Margin="21,0,0,0"/>
+        <TextBlock Text="Name" Style="{StaticResource ColumnHeader}" Margin="41,0,0,0"/>
         <TextBlock Grid.Column="1" Text="Type" Style="{StaticResource ColumnHeader}"/>
         <TextBlock Grid.Column="2" Text="Status" Style="{StaticResource ColumnHeader}"/>
         <TextBlock Grid.Column="3" Text="Left size" Style="{StaticResource ColumnHeader}" TextAlignment="Right"/>
@@ -83,6 +83,20 @@
         <TreeView.ItemTemplate>
           <HierarchicalDataTemplate ItemsSource="{Binding Children}">
             <Grid MinHeight="19">
+              <Grid.Style>
+                <Style TargetType="Grid">
+                  <Setter Property="Background" Value="{Binding StatusFill}"/>
+                  <Style.Triggers>
+                    <MultiDataTrigger>
+                      <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsDirectory}" Value="True"/>
+                        <Condition Binding="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True"/>
+                      </MultiDataTrigger.Conditions>
+                      <Setter Property="Background" Value="Transparent"/>
+                    </MultiDataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Grid.Style>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="96"/><ColumnDefinition Width="90"/>
                 <ColumnDefinition Width="132"/><ColumnDefinition Width="90"/><ColumnDefinition Width="132"/>
@@ -90,12 +104,12 @@
               <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
                 <ToggleButton Style="{DynamicResource TreeExpander}" Margin="0,0,4,0" Visibility="{Binding ExpanderVisibility}"
                               IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=TreeViewItem}, Mode=TwoWay}"/>
-                <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,7,0" VerticalAlignment="Center"
-                        Background="{Binding StatusFill}" BorderBrush="{Binding StatusStroke}" BorderThickness="1"/>
+                <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe Fluent Icons" FontSize="15" Width="16" Margin="0,0,7,0"
+                           VerticalAlignment="Centre" HorizontalAlignment="Centre" Foreground="{DynamicResource TextSecondary}"/>
                 <TextBlock Text="{Binding Name}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis"/>
               </StackPanel>
               <TextBlock Grid.Column="1" Text="{Binding TypeText}" Foreground="{DynamicResource TextSecondary}"/>
-              <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{Binding StatusStroke}"/>
+              <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{DynamicResource TextSecondary}"/>
               <TextBlock Grid.Column="3" Text="{Binding LeftSize}" TextAlignment="Right" Foreground="{DynamicResource TextSecondary}"/>
               <TextBlock Grid.Column="4" Text="{Binding LeftModified}" Margin="8,0,0,0" Foreground="{DynamicResource TextSecondary}"/>
               <TextBlock Grid.Column="5" Text="{Binding RightSize}" TextAlignment="Right" Foreground="{DynamicResource TextSecondary}"/>
