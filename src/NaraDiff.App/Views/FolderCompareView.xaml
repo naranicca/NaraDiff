@@ -51,7 +51,7 @@
         <CheckBox x:Name="OnlyDifferencesBox" Content="Only differences" Margin="14,0,0,0" Click="Filter_Changed"
                   ToolTip="Hide entries that are identical on both sides"/>
         <TextBlock Text="Exclude" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="14,0,6,0"/>
-        <TextBox x:Name="ExcludeBox" Width="230" ToolTip="Semicolon separated glob patterns, for example bin/;obj/;*.log" KeyDown="Exclude_KeyDown"/>
+        <TextBox x:Name="ExcludeBox" Width="230" Height="30" Padding="7,3,7,4" ToolTip="Semicolon separated glob patterns, for example bin/;obj/;*.log" KeyDown="Exclude_KeyDown"/>
         <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
         <controls:IconButton Icon="{DynamicResource IconExpand}" Label="Expand" Click="Expand_Click" ToolTip="Expand every folder"/>
         <controls:IconButton Icon="{DynamicResource IconCollapse}" Label="Collapse" Click="Collapse_Click" ToolTip="Collapse every folder"/>

@@ -108,6 +108,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         CaseBox.IsChecked = options.CaseSensitiveNames;
         ExcludeBox.Text = string.Join(";", options.ExcludePatterns);
         _suppressEvents = false;
+        ExcludeBox.TextChanged += (_, _) => { if (!_suppressEvents && _result is not null) RebuildTree(); };
         Tree.PreviewStylusDown += Tree_StylusPanDown;
         Tree.PreviewStylusMove += Tree_StylusPanMove;
         Tree.PreviewStylusUp += Tree_StylusPanUp;
@@ -347,9 +348,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         if (_result is null) return;
         var onlyDifferences = OnlyDifferencesBox.IsChecked == true;
         var rows = new List<FolderRow>();
+        var exclusions = new GlobMatcher(CurrentOptions().ExcludePatterns, CurrentOptions().CaseSensitiveNames);
         foreach (var child in _result.Root.Children)
         {
-            var row = BuildRow(child, onlyDifferences, 0);
+            var row = BuildRow(child, onlyDifferences, 0, exclusions);
             if (row is not null) rows.Add(row);
         }
         Tree.ItemsSource = rows;
@@ -363,15 +365,17 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         SetFooter(StatusText);
     }
 
-    private FolderRow? BuildRow(FolderEntry entry, bool onlyDifferences, int depth)
+    private FolderRow? BuildRow(FolderEntry entry, bool onlyDifferences, int depth, GlobMatcher exclusions)
     {
+        if (exclusions.IsExcluded(entry.Name, entry.RelativePath)) return null;
         var children = new List<FolderRow>();
         foreach (var child in entry.Children)
         {
-            var row = BuildRow(child, onlyDifferences, depth + 1);
+            var row = BuildRow(child, onlyDifferences, depth + 1, exclusions);
             if (row is not null) children.Add(row);
         }
-        if (onlyDifferences && !entry.HasDifference && children.Count == 0) return null;
+        if ((onlyDifferences && !entry.HasDifference && children.Count == 0) ||
+            (entry.IsDirectory && entry.Children.Count > 0 && children.Count == 0)) return null;
         var palette = ThemeService.Palette;
         var result = new FolderRow
         {
