@@ -29,7 +29,7 @@ public sealed class FolderRow
     /// <summary>Glyph selected from the entry kind and its file extension.</summary>
     public required string IconGlyph { get; init; }
 
-    public bool  IsDirectory { get; init; }
+    public bool IsDirectory { get; init; }
 
     public required Brush StatusFill { get; init; }
 
@@ -381,9 +381,9 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             ".cs" or ".csproj" or ".sln" or ".json" or ".xml" or ".xaml" or ".html" or ".css" or ".js" or ".ts" or ".py" or ".cpp" or ".h" => "\uE943",
             ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".svg" or ".ico" or ".webp" => "\uEB9F",
             ".mp3" or ".wav" or ".flac" or ".mp4" or ".mkv" or ".avi" or ".mov" => "\uE8B1",
-            ".zip" or ".7z" or ".rar" or ".tar" or ".gz" => "\uE012",
-            ".txt" or ".md" or ".log" or ".pdf" or ".doc" or ".docx" or ".xls" or ".ppt" or ".pptx" => "\uE8A5",
-            _ => "\uE8A55"
+            ".zip" or ".7z" or ".rar" or ".tar" or ".gz" => "\uF012",
+            ".txt" or ".md" or ".log" or ".pdf" or ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx" => "\uE8A5",
+            _ => "\uE8A5"
         };
     }
 

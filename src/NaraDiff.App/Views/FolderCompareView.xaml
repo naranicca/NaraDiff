@@ -105,7 +105,7 @@
                 <ToggleButton Style="{DynamicResource TreeExpander}" Margin="0,0,4,0" Visibility="{Binding ExpanderVisibility}"
                               IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=TreeViewItem}, Mode=TwoWay}"/>
                 <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe Fluent Icons" FontSize="15" Width="16" Margin="0,0,7,0"
-                           VerticalAlignment="Centre" HorizontalAlignment="Centre" Foreground="{DynamicResource TextSecondary}"/>
+                           VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
                 <TextBlock Text="{Binding Name}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis"/>
               </StackPanel>
               <TextBlock Grid.Column="1" Text="{Binding TypeText}" Foreground="{DynamicResource TextSecondary}"/>
