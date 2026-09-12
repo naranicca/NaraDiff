@@ -442,7 +442,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         var dialog = new OpenFolderDialog { Title = "Select a folder" };
         if (Directory.Exists(target.Text)) dialog.InitialDirectory = target.Text;
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true) target.Text = dialog.FolderName;
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        target.Text = dialog.FolderName;
+        if (ReferenceEquals(target, LeftPathBox) && string.IsNullOrWhiteSpace(RightPathBox.Text)) _ = CompareAsync();
+        if (ReferenceEquals(target, RightPathBox) && string.IsNullOrWhiteSpace(LeftPathBox.Text)) _ = CompareAsync();
     }
 
     private static void SetFolderDropEffect(DragEventArgs e)
