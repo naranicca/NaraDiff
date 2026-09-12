@@ -72,6 +72,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private DiffOptions _diffOptions;
     private FolderComparisonResult? _result;
     private CancellationTokenSource? _comparison;
+    private GitWorktreeComparer? _gitComparison;
     private bool _suppressEvents;
     private bool _disposed;
     private StylusDevice? _panningStylus;
@@ -107,6 +108,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         CaseBox.IsChecked = options.CaseSensitiveNames;
         ExcludeBox.Text = string.Join(";", options.ExcludePatterns);
         _suppressEvents = false;
+        ExcludeBox.TextChanged += (_, _) => { if (!_suppressEvents && _result is not null) RebuildTree(); };
         Tree.PreviewStylusDown += Tree_StylusPanDown;
         Tree.PreviewStylusMove += Tree_StylusPanMove;
         Tree.PreviewStylusUp += Tree_StylusPanUp;
@@ -148,7 +150,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         if (!string.IsNullOrWhiteSpace(leftPath)) LeftPathBox.Text = leftPath;
         if (!string.IsNullOrWhiteSpace(rightPath)) RightPathBox.Text = rightPath;
-        if (Directory.Exists(LeftPathBox.Text) && Directory.Exists(RightPathBox.Text)) await CompareAsync();
+        if (Directory.Exists(LeftPathBox.Text) || Directory.Exists(RightPathBox.Text)) await CompareAsync();
     }
 
     public void ApplySettings(AppSettings settings)
@@ -193,6 +195,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _stylusInertia.Stop();
         _comparison?.Cancel();
         _comparison?.Dispose();
+        _gitComparison?.Dispose();
     }
 
     private void Tree_StylusPanDown(object sender, StylusDownEventArgs e)
@@ -280,11 +283,31 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         var left = LeftPathBox.Text.Trim();
         var right = RightPathBox.Text.Trim();
+        var singleFolder = Directory.Exists(left) && string.IsNullOrWhiteSpace(right)
+            ? left
+            : Directory.Exists(right) && string.IsNullOrWhiteSpace(left) ? right : null;
+        if (singleFolder is not null)
+        {
+            _gitComparison?.Dispose();
+            _gitComparison = await GitWorktreeComparer.CreateAsync(singleFolder, CancellationToken.None);
+            if (_gitComparison is null)
+            {
+                SetFooter("Enter both folders, or select a Git repository to view its working-tree changes.");
+                return;
+            }
+            _result = _gitComparison.Result;
+            RebuildTree();
+            SetFooter("Git changes: HEAD — working tree");
+            TitleChanged?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         if (!Directory.Exists(left) || !Directory.Exists(right))
         {
             SetFooter("Both folders must exist before they can be compared.");
             return;
         }
+        _gitComparison?.Dispose();
+        _gitComparison = null;
         _comparison?.Cancel();
         _comparison?.Dispose();
         var source = new CancellationTokenSource();
@@ -325,9 +348,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         if (_result is null) return;
         var onlyDifferences = OnlyDifferencesBox.IsChecked == true;
         var rows = new List<FolderRow>();
+        var exclusions = new GlobMatcher(CurrentOptions().ExcludePatterns, CurrentOptions().CaseSensitiveNames);
         foreach (var child in _result.Root.Children)
         {
-            var row = BuildRow(child, onlyDifferences, 0);
+            var row = BuildRow(child, onlyDifferences, 0, exclusions);
             if (row is not null) rows.Add(row);
         }
         Tree.ItemsSource = rows;
@@ -341,15 +365,17 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         SetFooter(StatusText);
     }
 
-    private FolderRow? BuildRow(FolderEntry entry, bool onlyDifferences, int depth)
+    private FolderRow? BuildRow(FolderEntry entry, bool onlyDifferences, int depth, GlobMatcher exclusions)
     {
+        if (exclusions.IsExcluded(entry.Name, entry.RelativePath)) return null;
         var children = new List<FolderRow>();
         foreach (var child in entry.Children)
         {
-            var row = BuildRow(child, onlyDifferences, depth + 1);
+            var row = BuildRow(child, onlyDifferences, depth + 1, exclusions);
             if (row is not null) children.Add(row);
         }
-        if (onlyDifferences && !entry.HasDifference && children.Count == 0) return null;
+        if ((onlyDifferences && !entry.HasDifference && children.Count == 0) ||
+            (entry.IsDirectory && entry.Children.Count > 0 && children.Count == 0)) return null;
         var palette = ThemeService.Palette;
         var result = new FolderRow
         {
@@ -420,7 +446,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         var dialog = new OpenFolderDialog { Title = "Select a folder" };
         if (Directory.Exists(target.Text)) dialog.InitialDirectory = target.Text;
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true) target.Text = dialog.FolderName;
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        target.Text = dialog.FolderName;
+        if (ReferenceEquals(target, LeftPathBox) && string.IsNullOrWhiteSpace(RightPathBox.Text)) _ = CompareAsync();
+        if (ReferenceEquals(target, RightPathBox) && string.IsNullOrWhiteSpace(LeftPathBox.Text)) _ = CompareAsync();
     }
 
     private static void SetFolderDropEffect(DragEventArgs e)
