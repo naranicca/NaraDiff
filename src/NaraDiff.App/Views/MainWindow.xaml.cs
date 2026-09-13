@@ -81,6 +81,27 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Window_PreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (Tabs.Items.Count != 0 || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private async void Window_PreviewDrop(object sender, DragEventArgs e)
+    {
+        if (Tabs.Items.Count != 0 || e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+        e.Handled = true;
+        var folders = paths.Where(Directory.Exists).ToArray();
+        if (folders.Length > 0)
+        {
+            await NewFolderCompareAsync(folders[0], folders.Length > 1 ? folders[1] : null);
+            return;
+        }
+        var files = paths.Where(File.Exists).ToArray();
+        if (files.Length > 0) await NewFileCompareAsync(files[0], files.Length > 1 ? files[1] : null);
+    }
+
     // ---------- tabs ----------
 
     private TabItem AddTab(UserControl view, IComparisonView api)

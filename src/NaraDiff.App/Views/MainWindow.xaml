@@ -5,7 +5,8 @@
         Title="NaraDiff" Icon="/NaraDiff;component/Resources/NaraDiff.ico" Width="1360" Height="860" MinWidth="760" MinHeight="480"
         FontFamily="Segoe UI" FontSize="12" UseLayoutRounding="True" SnapsToDevicePixels="True"
         Background="{DynamicResource Surface}" Foreground="{DynamicResource TextPrimary}"
-        PreviewKeyDown="Window_PreviewKeyDown">
+        PreviewKeyDown="Window_PreviewKeyDown" AllowDrop="true"
+        PreviewDragEnter="Window_PreviewDragOver" PreviewDragOver="Window_PreviewDragOver" PreviewDrop="Window_PreviewDrop">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
