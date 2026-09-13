@@ -11,6 +11,7 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <Grid Grid.Row="0">
@@ -75,7 +76,16 @@
       </Border>
     </Grid>
 
-    <Border Grid.Row="4" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,5">
+    <Border Grid.Row="4" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="8,6">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
+        </Grid.ColumnDefinitions>
+        <controls:FilePaneSettings x:Name="LeftSettings" Grid.Column="0"/>
+        <controls:FilePaneSettings x:Name="RightSettings" Grid.Column="2"/>
+      </Grid>
+    </Border>
+    <Border Grid.Row="5" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,5">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <TextBlock x:Name="FooterText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
