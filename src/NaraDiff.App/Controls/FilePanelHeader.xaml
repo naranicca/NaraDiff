@@ -18,7 +18,7 @@
           <controls:IconButton x:Name="SaveButton" Icon="{DynamicResource IconSave}" ToolTip="Save this side (Ctrl+S)" Click="Save_Click"/>
         </StackPanel>
       </Grid>
-      <StackPanel x:Name="SettingsRow" Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,0">
+      <StackPanel x:Name="SettingsRow" Grid.Row="1" Orientation="Horizontal" Visibility="Collapsed" Margin="0,6,0,0">
         <ComboBox x:Name="EncodingBox" Width="150" ToolTip="Text encoding used to read and write this file" SelectionChanged="EncodingBox_SelectionChanged"/>
         <ComboBox x:Name="LineEndingBox" Width="104" Margin="6,0,0,0" ToolTip="Line ending written when saving" SelectionChanged="LineEndingBox_SelectionChanged"/>
         <Border x:Name="ReadOnlyChip" Style="{DynamicResource Chip}" Margin="6,0,0,0" Visibility="Collapsed">

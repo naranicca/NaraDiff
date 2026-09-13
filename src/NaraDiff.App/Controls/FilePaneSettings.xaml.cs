@@ -24,6 +24,6 @@ public partial class FilePaneSettings : UserControl
     public void SetEncoding(EncodingChoice choice) { _suppressEvents = true; EncodingBox.SelectedItem = EncodingCatalog.All.FirstOrDefault(item => item.Id == choice.Id) ?? EncodingCatalog.Utf8; _suppressEvents = false; }
     public void SetLineEndingMode(SaveLineEndingMode mode) { _suppressEvents = true; LineEndingBox.SelectedIndex = Math.Max(0, Array.FindIndex(LineEndingModes, entry => entry.Mode == mode)); _suppressEvents = false; }
     public void SetState(string detail, bool isReadOnly, bool isModified) { DetailText.Text = detail; ReadOnlyChip.Visibility = isReadOnly ? Visibility.Visible : Visibility.Collapsed; ModifiedChip.Visibility = isModified ? Visibility.Visible : Visibility.Collapsed; }
-    private void EncodingBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if ( !_suppressEvents) EncodingChanged ?. Invoke(this, SelectedEncoding); }
-    private void LineEndingBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if ( !_suppressEvents) LineEndingChanged ?. Invoke(this, SelectedLineEndingMode); }
+    private void EncodingBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (!_suppressEvents) EncodingChanged?.Invoke(this, SelectedEncoding); }
+    private void LineEndingBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (!_suppressEvents) LineEndingChanged?.Invoke(this, SelectedLineEndingMode); }
 }

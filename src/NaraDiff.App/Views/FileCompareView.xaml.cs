@@ -339,7 +339,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             path = dialog.FileName;
         }
         var lines = editor.GetLines();
-        var mode = header.SelectedLineEndingMode;
+        var mode = settings.SelectedLineEndingMode;
         var target = mode switch
         {
             SaveLineEndingMode.Lf => LineEndingKind.Lf,
