@@ -61,10 +61,10 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         RightHeader.SaveRequested += async (_, _) => await SaveSideAsync(false);
         LeftHeader.PathCommitted += async (_, path) => await LoadSideAsync(true, path);
         RightHeader.PathCommitted += async (_, path) => await LoadSideAsync(false, path);
-        LeftHeader.EncodingChanged += async (_, choice) => await ReinterpretAsync(true, choice);
-        RightHeader.EncodingChanged += async (_, choice) => await ReinterpretAsync(false, choice);
-        LeftHeader.LineEndingChanged += (_, _) => UpdateHeaders();
-        RightHeader.LineEndingChanged += (_, _) => UpdateHeaders();
+        LeftSettings.EncodingChanged += async (_, choice) => await ReinterpretAsync(true, choice);
+        RightSettings.EncodingChanged += async (_, choice) => await ReinterpretAsync(false, choice);
+        LeftSettings.LineEndingChanged += (_, _) => UpdateHeaders();
+        RightSettings.LineEndingChanged += (_, _) => UpdateHeaders();
 
         Connector.LeftEditor = LeftEditor;
         Connector.RightEditor = RightEditor;
@@ -256,6 +256,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     private async Task LoadSideAsync(bool left, string path, EncodingChoice? encoding = null)
     {
         var header = left ? LeftHeader : RightHeader;
+        var settings = left ? LeftSettings : RightSettings;
         var editor = left ? LeftEditor : RightEditor;
         try
         {
@@ -276,7 +277,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             if (left) _leftBytes = result.Content.Bytes; else _rightBytes = result.Content.Bytes;
             editor.SetContent(result.Content.IsBinary ? string.Empty : result.Content.Text);
             header.PathText = result.Path;
-            header.SetEncoding(result.Content.Encoding);
+            settings.SetEncoding(result.Content.Encoding);
             _settings.RememberFile(result.Path);
             _loading = false;
             UpdateWatcher();
@@ -300,7 +301,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             MessageBox.Show(Window.GetWindow(this), "Reading the file again with another encoding discards the current edits. Continue?",
                 "NaraDiff", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
         {
-            (left ? LeftHeader : RightHeader).SetEncoding(editor.EncodingChoice);
+            (left ? LeftSettings : RightSettings).SetEncoding(editor.EncodingChoice);
             return;
         }
         await LoadSideAsync(left, editor.FilePath!, choice);
@@ -324,6 +325,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     {
         var editor = left ? LeftEditor : RightEditor;
         var header = left ? LeftHeader : RightHeader;
+        var settings = left ? LeftSettings : RightSettings;
         if (editor.IsBinaryContent)
         {
             ShowNotice("Binary files are compared read-only and cannot be saved from NaraDiff.", null);
@@ -345,7 +347,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             SaveLineEndingMode.Cr => LineEndingKind.Cr,
             _ => LineEndingKind.None
         };
-        var encoding = header.SelectedEncoding;
+        var encoding = settings.SelectedEncoding;
         var conversions = new List<string>();
         var detected = LineEndings.Detect(lines);
         if (target != LineEndingKind.None && target != detected)
@@ -734,8 +736,8 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     private void UpdateHeaders()
     {
-        LeftHeader.SetState(Describe(LeftEditor), LeftEditor.IsReadOnly, LeftEditor.IsModified);
-        RightHeader.SetState(Describe(RightEditor), RightEditor.IsReadOnly, RightEditor.IsModified);
+        LeftSettings.SetState(Describe(LeftEditor), LeftEditor.IsReadOnly, LeftEditor.IsModified);
+        RightSettings.SetState(Describe(RightEditor), RightEditor.IsReadOnly, RightEditor.IsModified);
         LeftHeader.CanSave = !LeftEditor.IsReadOnly;
         RightHeader.CanSave = !RightEditor.IsReadOnly;
     }
