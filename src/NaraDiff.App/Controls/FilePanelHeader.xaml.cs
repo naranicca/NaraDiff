@@ -65,6 +65,13 @@ public partial class FilePaneHeader : UserControl
 
     public SaveLineEndingMode SelectedLineEndingMode => LineEndingModes[Math.Max(0, LineEndingBox.SelectedIndex)].Mode;
 
+    public FrameworkElement DetachSettings()
+    {
+        if (SettingsRow.Parent is Panel parent) parent.Children.Remove(SettingsRow);
+        SettingsRow.Margin = new Thickness(0);
+        return SettingsRow;
+    }
+
     public bool CanSave
     {
         get => SaveButton.IsEnabled;
