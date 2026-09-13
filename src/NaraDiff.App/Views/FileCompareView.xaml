@@ -85,7 +85,7 @@
         <controls:FilePaneSettings x:Name="RightSettings" Grid.Column="2"/>
       </Grid>
     </Border>
-    <Border Grid.Row="5" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,5">
+    <Border Grid.Row="5" Visibility="Collapsed" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,5">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <TextBlock x:Name="FooterText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
