@@ -93,8 +93,9 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
                 // A deletion has no characters on this side. Mark its exact insertion boundary
                 // so a missing word, such as "b" in "a b c" versus "a c", remains visible.
                 var position = textView.GetVisualPosition(new TextViewPosition(documentLine.LineNumber, start - documentLine.Offset + 1), VisualYPosition.LineTop);
+                var scroll = textView.ScrollOffset;
                 drawingContext.DrawRoundedRectangle(decoration.InlineBrush, NoPen,
-                    new Rect(position.X - 1, position.Y, 3, textView.DefaultLineHeight), 1.5, 1.5);
+                    new Rect(position.X - scroll.X - 1, position.Y, 3, textView.DefaultLineHeight), 1.5, 1.5);
                 continue;
             }
             if (end <= start) continue;
