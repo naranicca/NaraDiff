@@ -104,7 +104,7 @@ public sealed class DiffTextEditor : TextEditor
 
     private static ScrollViewer? FindScrollViewer(DependencyObject root)
     {
-        var count = VisualTreeHelper.GetChildCount(root);
+        var count = VisualTreeHelper.GetChildrenCount(root);
         for (var i = 0; i < count; i++)
         {
             var child = VisualTreeHelper.GetChild(root, i);
