@@ -79,17 +79,17 @@ public sealed class DiffTextEditor : TextEditor
     /// Moves this editor's vertical scroll bar from its usual right edge to the left edge, so the
     /// right edge stays free for the connector ribbon and the diff block backgrounds are not clipped
     /// underneath the scroll bar. Done through <see cref="ScrollBarPlacement"/> on the editor's own
-    /// internal ScrollViewer, which swpas which grid column the scorll bar and the content occupy in
+    /// internal ScrollViewer, which swaps which grid column the scroll bar and the content occupy in
     /// that ScrollViewer's own template - not by mirroring this control with FlowDirection, which used
     /// to also flip the coordinate space a stylus reports through GetPosition and reversed the
-    /// direction of pen-drag panning on this editor while mou se dragging stayed correct.
+    /// direction of pen-drag panning on this editor while mouse dragging stayed correct.
     /// </summary>
     public void PlaceScrollBarOnTheLeft()
     {
         _scrollBarOnLeft = true;
         ApplyScrollBarPlacement();
     }
-    
+
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
@@ -104,12 +104,13 @@ public sealed class DiffTextEditor : TextEditor
 
     private static ScrollViewer? FindScrollViewer(DependencyObject root)
     {
-        var count = VisualTreeHelper.GetChild(root, i);
+        var count = VisualTreeHelper.GetChildCount(root);
         for (var i = 0; i < count; i++)
         {
+            var child = VisualTreeHelper.GetChild(root, i);
             if (child is ScrollViewer scrollViewer) return scrollViewer;
             var nested = FindScrollViewer(child);
-            if (nested is not null)  return nested;
+            if (nested is not null) return nested;
         }
         return null;
     }
@@ -127,7 +128,7 @@ public sealed class DiffTextEditor : TextEditor
     private void OnStylusPanDown(object sender, StylusDownEventArgs e)
     {
         if (e.StylusDevice.TabletDevice.Type != TabletDeviceType.Stylus) return;
-        // A pen press on the scroll bar itself (either orientation) must drag taht scroll bar the
+        // A pen press on the scroll bar itself (either orientation) must drag that scroll bar the
         // same way a mouse would, not be swallowed into panning the content underneath it.
         if (IsDescendantOfScrollBar(e.OriginalSource as DependencyObject)) return;
         _stylusInertia.Stop();
