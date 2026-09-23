@@ -406,8 +406,8 @@
         <ControlTemplate TargetType="ScrollViewer">
           <Grid Background="{TemplateBinding Background}">
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition x:Name="Col0" Width="*"/>
+              <ColumnDefinition x:Name="Col1" Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
               <RowDefinition Height="*"/>
@@ -424,6 +424,15 @@
                        ViewportSize="{TemplateBinding ViewportWidth}"
                        Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"/>
           </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="controls:ScrollBarPlacement.IsOnLeft" Value="True">
+              <Setter TargetName="Col0" Property="Width" Value="Auto"/>
+              <Setter TargetName="Col1" Property="Width" Value="*"/>
+              <Setter TargetName="PART_ScrollContentPresenter" Property="Grid.Column" Value="1"/>
+              <Setter TargetName="PART_VerticalScrollBar" Property="Grid.Column" Value="0"/>
+              <Setter TargetName="PART_HorizontalScrollBar" Property="Grid.Column" Value="1"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>

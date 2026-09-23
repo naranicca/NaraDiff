@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit;
@@ -70,23 +72,64 @@ public sealed class DiffTextEditor : TextEditor
         LostStylusCapture += (_, _) => EndStylusPan();
     }
 
+    private bool _scrollBarOnLeft;
+    private ScrollViewer? _scrollViewer;
+
     /// <summary>
     /// Moves this editor's vertical scroll bar from its usual right edge to the left edge, so the
     /// right edge stays free for the connector ribbon and the diff block backgrounds are not clipped
-    /// underneath the scroll bar. Mirrors the editor's own layout (which swaps the scroll bar and the
-    /// text area to the other side of that layout) and then mirrors the text area back, so the text,
-    /// the line numbers and the diff backgrounds keep reading left to right.
+    /// underneath the scroll bar. Done through <see cref="ScrollBarPlacement"/> on the editor's own
+    /// internal ScrollViewer, which swpas which grid column the scorll bar and the content occupy in
+    /// that ScrollViewer's own template - not by mirroring this control with FlowDirection, which used
+    /// to also flip the coordinate space a stylus reports through GetPosition and reversed the
+    /// direction of pen-drag panning on this editor while mou se dragging stayed correct.
     /// </summary>
     public void PlaceScrollBarOnTheLeft()
     {
-        Padding = new Thickness(Padding.Right, Padding.Top, Padding.Left, Padding.Bottom);
-        FlowDirection = FlowDirection.RightToLeft;
-        TextArea.FlowDirection = FlowDirection.LeftToRight;
+        _scrollBarOnLeft = true;
+        ApplyScrollBarPlacement();
     }
     
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        _scrollViewer = FindScrollViewer(this);
+        ApplyScrollBarPlacement();
+    }
+
+    private void ApplyScrollBarPlacement()
+    {
+        if (_scrollViewer is not null) ScrollBarPlacement.SetIsOnLeft(_scrollViewer, _scrollBarOnLeft);
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        var count = VisualTreeHelper.GetChild(root, i);
+        for (var i = 0; i < count; i++)
+        {
+            if (child is ScrollViewer scrollViewer) return scrollViewer;
+            var nested = FindScrollViewer(child);
+            if (nested is not null)  return nested;
+        }
+        return null;
+    }
+
+    private static bool IsDescendantOfScrollBar(DependencyObject? element)
+    {
+        while (element is not null)
+        {
+            if (element is ScrollBar) return true;
+            element = element is Visual ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element);
+        }
+        return false;
+    }
+
     private void OnStylusPanDown(object sender, StylusDownEventArgs e)
     {
         if (e.StylusDevice.TabletDevice.Type != TabletDeviceType.Stylus) return;
+        // A pen press on the scroll bar itself (either orientation) must drag taht scroll bar the
+        // same way a mouse would, not be swallowed into panning the content underneath it.
+        if (IsDescendantOfScrollBar(e.OriginalSource as DependencyObject)) return;
         _stylusInertia.Stop();
         _panningStylus = e.StylusDevice;
         _stylusPanStart = e.GetPosition(this);
