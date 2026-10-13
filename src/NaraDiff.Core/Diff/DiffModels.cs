@@ -130,11 +130,16 @@ public sealed class DiffResult
     public DiffBlock? PreviousBlockBeforeLeftLine(int line) => Blocks.LastOrDefault(block => block.LeftStart < line);
 
     /// <summary>Maps a left line to the matching right line, interpolating inside changed blocks.</summary>
-    public double MapLeftToRight(double line) => Map(line, true);
+    public double MapLeftToRight(double line) => Map(line, true, 1);
 
-    public double MapRightToLeft(double line) => Map(line, false);
+    public double MapRightToLeft(double line) => Map(line, false, 1);
 
-    private double Map(double line, bool leftToRight)
+    public double MapLeftToRight(double line, double bias) => Map(line, true, bias);
+
+    /// <inheritdoc cref="MapLeftToRight(double, double)"/>
+    public double MapRightToLeft(double line, double bias) => Map(line, false, bias);
+
+    private double Map(double line, bool leftToRight, double bias)
     {
         if (_anchors.Count == 0) return line;
         var low = 0;
@@ -146,7 +151,25 @@ public sealed class DiffResult
             if (value <= line) low = middle;
             else high = middle - 1;
         }
+        const double tolerance = 1e-9;
+        if (low + 1 < _anchors.Count && Math.Abs((leftToRight ? _anchors[low + 1].Left : _anchors[low + 1].Right) - line) < tolerance)
+        {
+            low++;
+            while (low + 1 < _anchors.Count && (leftToRight ? _anchors[low + 1].Left : _anchors[low + 1].Right) == (leftToRight ? _anchors[low].Left : _anchors[low].Right)) low++;
+            line = leftToRight ? _anchors[low].Left : _anchors[low].Right;
+        }
         var start = _anchors[low];
+        if (Math.Abs((leftToRight ? start.Left : start.Right) - line) < tolerance)
+        {
+            var first = low;
+            while (first > 0 && Math.Abs((leftToRight ? _anchors[first - 1].Left : _anchors[first - 1].Right) - line) < tolerance) first--;
+            if (first < low)
+            {
+                var from = leftToRight ? _anchors[first].Right : _anchors[first].Left;
+                var to = leftToRight ? start.Right : start.Left;
+                return from + Math.Clamp(bias, 0, 1) * (to - from);
+            }
+        }
         if (low + 1 >= _anchors.Count)
             return (leftToRight ? start.Right : start.Left) + (line - (leftToRight ? start.Left : start.Right));
         var end = _anchors[low + 1];

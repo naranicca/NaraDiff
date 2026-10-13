@@ -319,4 +319,70 @@ public sealed class DiffTextEditor : TextEditor
         TextArea.Caret.Column = 1;
         TextArea.Caret.BringCaretToView();
     }
+
+    public double ScrollViewportHeight => Math.Max(0, ((IScrollInfo)TextArea.TextView).ViewportHeight);
+
+    public double GetSyncFraction(double verticalOffset)
+    {
+        var page = ScrollViewportHeight;
+        var range = TextArea.TextView.DocumentHeight - page;
+        if (page <= 0 || range <= 0) return 0;
+        if (verticalOffset <= PositionTolerance) return 0;
+        if (verticalOffset >= range - PositionTolerance) return 1;
+        var ramp = Math.Min(page, range) / 2;
+        var fraction = 0.5 * Math.Min(1, verticalOffset / ramp) + 0.5 * Math.Max(0, (verticalOffset - (range - ramp)) / ramp);
+        return Math.Min(1, fraction);
+    }
+
+    private const double PositionTolerance = 1e-6;
+
+    public void StopInertia() => _stylusInertia.Stop();
+
+    public double GetLineAtViewportFraction(double verticalOffset, double fraction) =>
+        GetLineAtDocumentY(verticalOffset + fraction * ScrollViewportHeight);
+
+    public double GetOffsetPlacingLineAt(double line, double viewportY) => ClampToReachable(GetDocumentYOfLine(line) - viewportY);
+
+    public double GetCenteredOffset(double line) => ClampToReachable(GetDocumentYOfLine(line) - ScrollViewportHeight / 2);
+
+    public double ClampToReachable(double offset)
+    {
+        var view = TextArea.TextView;
+        var max = Options.AllowScrollBelowDocument
+            ? view.DocumentHeight - Math.Max(view.DefaultLineHeight, 30)
+            : view.DocumentHeight - ScrollViewportHeight;
+        return Math.Clamp(offset, 0, Math.Max(0, max));
+    }
+
+    private double GetLineAtDocumentY(double y)
+    {
+        var view = TextArea.TextView;
+        var document = Document;
+        var lineHeight = view.DefaultLineHeight;
+        if (document is null || document.LineCount == 0 || lineHeight <= 0) return 0;
+        if (y <= PositionTolerance) return Math.Min(0, y / lineHeight);
+        var height = view.DocumentHeight;
+        if (y >= height - PositionTolerance) return document.LineCount + Math.Max(0, y - height) / lineHeight;
+        var line = view.GetDocumentLineByVisualTop(y);
+        var top = view.GetVisualTopByDocumentLine(line.LineNumber);
+        var bottom = line.LineNumber < document.LineCount ? view.GetVisualTopByDocumentLine(line.LineNumber + 1) : height;
+        var span = bottom - top;
+        return line.LineNumber - 1 + (span > 0 ? Math.Clamp((y - top) / span, 0, 1) : 0);
+    }
+
+    public double GetDocumentYOfLine(double line)
+    {
+        var view = TextArea.TextView;
+        var document = Document;
+        var lineHeight = view.DefaultLineHeight;
+        if (document is null || document.LineCount == 0 || lineHeight <= 0) return 0;
+        if (line <= 0) return line * lineHeight;
+        var count = document.LineCount;
+        var height = view.DocumentHeight;
+        if (line >= count) return height + (line - count) * lineHeight;
+        var index = (int)Math.Floor(line);
+        var top = view.GetVisualTopByDocumentLine(index + 1);
+        var bottom = index + 1 < count ? view.GetVisualTopByDocumentLine(index + 2) : height;
+        return top + (line - index) * (bottom - top);
+    }
 }

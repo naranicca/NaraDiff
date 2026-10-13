@@ -37,6 +37,13 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     private byte[]? _rightBytes;
     private DiffTextEditor? _scrollLeader;
     private int _programmaticScrolls;
+    private bool _realignPending;
+    private bool _realignForced;
+    private bool _appliedWordWrap;
+    private PaneNavigation? _pendingNavigation;
+    private readonly PaneFollower _leftFollower = new();
+    private readonly PaneFollower _rightFollower = new();
+    private readonly Dictionary<DiffTextEditor, Vector> _lastOffsets = [];
     private bool _loading;
     private bool _disposed;
     private string? _pendingReloadPath;
@@ -78,13 +85,15 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             var pane = editor;
             var isLeftPane = ReferenceEquals(pane, LeftEditor);
             editor.ViewChanged += Editor_ViewChanged;
+            editor.TextArea.TextView.VisualLinesChanged += (_, _) => ScheduleRealign();
             editor.TextChanged += Editor_TextChanged;
             editor.CaretLineChanged += (_, _) => UpdateFooter();
-            // Whoever the user touches last leads the synchronised scrolling.
-            editor.PreviewMouseWheel += (_, _) => _scrollLeader = pane;
-            editor.PreviewMouseDown += (_, _) => _scrollLeader = pane;
-            editor.PreviewKeyDown += (_, _) => _scrollLeader = pane;
-            editor.GotKeyboardFocus += (_, _) => _scrollLeader = pane;
+            // Whoever the user touches last leads the synchronised scrolling, and touching a pane
+            // ends any jump that was still being re-applied while word-wrapped lines got measured.
+            editor.PreviewMouseWheel += (_, _) => TakeLead(pane);
+            editor.PreviewMouseDown += (_, _) => TakeLead(pane);
+            editor.PreviewKeyDown += (_, _) => TakeLead(pane);
+            editor.GotKeyboardFocus += (_, _) => TakeLead(pane);
             editor.AllowDrop = true;
             editor.PreviewDragEnter += (_, e) => SetFileDropEffect(e);
             editor.PreviewDragOver += (_, e) => SetFileDropEffect(e);
@@ -145,6 +154,9 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         _debounce.Interval = TimeSpan.FromMilliseconds(Math.Max(1, settings.DiffDebounceMilliseconds));
         _watcher.IsEnabled = settings.WatchFilesForChanges;
         UpdateVisuals();
+        // Switching word wrap changes every line's height; line the panes up again once that is laid out.
+        if (settings.WordWrap != _appliedWordWrap) ScheduleRealign(force: true);
+        _appliedWordWrap = settings.WordWrap;
     }
 
     public void ApplyDiffOptions(DiffOptions options)
@@ -437,6 +449,8 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             var result = await DiffEngine.CompareAsync(left, right, _options, source.Token);
             if (source.IsCancellationRequested) return;
             _diff = result;
+            // Lines map differently now; start the next alignment from where the panes are.
+            ForgetAlignment();
             UpdateVisuals();
         }
         catch (OperationCanceledException)
@@ -569,13 +583,15 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     private void GoToBlock(DiffBlock block)
     {
+        var leader = ActiveEditor;
+        var leaderIsRight = ReferenceEquals(leader, RightEditor);
         BeginProgrammaticScroll();
-        LeftEditor.ScrollToLineIndex(block.LeftStart);
-        RightEditor.ScrollToLineIndex(block.RightStart);
-        if (ActiveEditor == RightEditor) RightEditor.MoveCaretToLine(block.RightStart);
-        else LeftEditor.MoveCaretToLine(block.LeftStart);
-        Connector.Refresh();
-        Ruler.Refresh();
+        leader.MoveCaretToLine(leaderIsRight ? block.RightStart : block.LeftStart);
+        var navigation = new PaneNavigation(leader,
+            leaderIsRight ? block.RightStart : block.LeftStart,
+            leaderIsRight ? block.LeftStart : block.RightStart,
+            leader.TextArea.TextView.ScrollOffset.X);
+        Navigate(navigation);
         UpdateFooter();
     }
 
@@ -673,7 +689,15 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     private void Editor_ViewChanged(object? sender, EventArgs e)
     {
-        if (sender is DiffTextEditor source && CanSynchronizeFrom(source)) Synchronize(source);
+        if (sender is DiffTextEditor source)
+        {
+            var offset = source.TextArea.TextView.ScrollOffset;
+            var previous = _lastOffsets.TryGetValue(source, out var seen) ? seen : offset;
+            _lastOffsets[source] = offset;
+            var scrolled = Math.Abs(offset.Y - previous.Y) >= 1 || Math.Abs(offset.X - previous.X) >= 1;
+            if (scrolled && _programmaticScrolls == 0) _pendingNavigation = null;
+            if (scrolled && CanSynchronizeFrom(source)) Synchronize(source, previous.Y, offset.Y, offset.X);
+        }
         Connector.Refresh();
         Ruler.Refresh();
     }
@@ -690,22 +714,108 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         && _programmaticScrolls == 0
         && (_scrollLeader is null || ReferenceEquals(_scrollLeader, source));
 
-    private void Synchronize(DiffTextEditor source)
+    private void Synchronize(DiffTextEditor source, double previousOffset, double offset, double? offsetX)
     {
-        var other = ReferenceEquals(source, LeftEditor) ? RightEditor : LeftEditor;
-        var height = source.LineHeight;
-        if (height <= 0 || other.LineHeight <= 0) return;
-        var sourceOffset = source.TextArea.TextView.ScrollOffset;
-        var otherOffset = other.TextArea.TextView.ScrollOffset;
-        var sourceLine = sourceOffset.Y / height;
-        var targetLine = ReferenceEquals(source, LeftEditor) ? _diff.MapLeftToRight(sourceLine) : _diff.MapRightToLeft(sourceLine);
-        var targetY = Math.Max(0, targetLine * other.LineHeight);
-        var moveVertically = Math.Abs(otherOffset.Y - targetY) >= 1;
-        var moveHorizontally = Math.Abs(otherOffset.X - sourceOffset.X) >= 1;
+        var other = OtherPane(source);
+        if (source.LineHeight <= 0 || other.LineHeight <= 0) return;
+        var target = FollowerFor(other).Step(source, other, previousOffset, offset, sourceOffset => CanonicalOffset(source, other, sourceOffset));
+        ScrollPane(other, target, offsetX);
+    }
+
+    private double CanonicalOffset(DiffTextEditor source, DiffTextEditor other, double sourceOffset)
+    {
+        var fraction = source.GetSyncFraction(sourceOffset);
+        var sourceLine = source.GetLineAtViewportFraction(sourceOffset, fraction);
+        var targetLine = ReferenceEquals(source, LeftEditor) ? _diff.MapLeftToRight(sourceLine, fraction) : _diff.MapRightToLeft(sourceLine, fraction);
+        return other.GetOffsetPlacingLineAt(targetLine, fraction * source.ScrollViewportHeight);
+    }
+
+    private DiffTextEditor OtherPane(DiffTextEditor pane) => ReferenceEquals(pane, LeftEditor) ? RightEditor : LeftEditor;
+
+    private PaneFollower FollowerFor(DiffTextEditor pane) => ReferenceEquals(pane, LeftEditor) ? _leftFollower : _rightFollower;
+
+    private void ForgetAlignment()
+    {
+        _pendingNavigation = null;
+        _leftFollower.Reset();
+        _rightFollower.Reset();
+    }
+
+    private void TakeLead(DiffTextEditor pane)
+    {
+        _scrollLeader = pane;
+        _pendingNavigation = null;
+        OtherPane(pane).StopInertia();
+    }
+
+    private void ScrollPane(DiffTextEditor pane, double offsetY, double? offsetX)
+    {
+        var current = pane.TextArea.TextView.ScrollOffset;
+        var moveVertically = Math.Abs(current.Y - offsetY) >= 1;
+        var moveHorizontally = offsetX is { } x && Math.Abs(current.X - x) >= 1;
         if (!moveVertically && !moveHorizontally) return;
         BeginProgrammaticScroll();
-        if (moveVertically) other.ScrollToVerticalOffset(targetY);
-        if (moveHorizontally) other.ScrollToHorizontalOffset(sourceOffset.X);
+        if (moveVertically) pane.ScrollToVerticalOffset(offsetY);
+        if (moveHorizontally) pane.ScrollToHorizontalOffset(offsetX!.Value);
+    }
+
+    private sealed record PaneNavigation(DiffTextEditor Leader, double LeaderLine, double OtherLine, double? OffsetX);
+
+    private void Navigate(PaneNavigation navigation)
+    {
+        var (leader, leaderLine, otherLine, offsetX) = navigation;
+        var other = OtherPane(leader);
+        LeftEditor.StopInertia();
+        RightEditor.StopInertia();
+        ForgetAlignment();
+        _scrollLeader = leader;
+        _pendingNavigation = _settings.WordWrap ? navigation : null;
+        var leaderOffset = leader.GetCenteredOffset(leaderLine);
+        var otherOffset = CanonicalOffset(leader, other, leaderOffset);
+        var shownAt = other.GetDocumentYOfLine(otherLine) - otherOffset;
+        if (shownAt < 0 || shownAt > other.ScrollViewportHeight - other.LineHeight)
+            otherOffset = other.GetOffsetPlacingLineAt(otherLine, leader.GetDocumentYOfLine(leaderLine) - leaderOffset);
+        ScrollPane(leader, leaderOffset, null);
+        ScrollPane(other, otherOffset, offsetX);
+        Connector.Refresh();
+        Ruler.Refresh();
+    }
+
+    private void ScheduleRealign(bool force = false)
+    {
+        _realignForced |= force;
+        if ((!_settings.WordWrap && !_realignForced) || _realignPending) return;
+        _realignPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Realign));
+    }
+
+    private void Realign()
+    {
+        _realignPending = false;
+        if (_disposed || IsBinaryMode)
+        {
+            _realignForced = false;
+            return;
+        }
+        // Scrolls requested from code are still on their way; come back once they have landed rather
+        // than dropping the correction.
+        if (_programmaticScrolls != 0)
+        {
+            ScheduleRealign();
+            return;
+        }
+        _realignForced = false;
+        if (_pendingNavigation is { } navigation)
+        {
+            Navigate(navigation);
+            return;
+        }
+        if (_scrollLeader is not { } leader || !CanSynchronizeFrom(leader)) return;
+        var other = OtherPane(leader);
+        var follower = FollowerFor(other);
+        if (!follower.IsTracking(leader, other)) return;
+        var offset = leader.TextArea.TextView.ScrollOffset.Y;
+        ScrollPane(other, follower.Step(leader, other, offset, offset, sourceOffset => CanonicalOffset(leader, other, sourceOffset)), null);
     }
 
     /// <summary>
@@ -718,17 +828,13 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => _programmaticScrolls = Math.Max(0, _programmaticScrolls - 1)));
     }
 
-    private void ScrollBothToRightLine(int rightLine)
-    {
-        BeginProgrammaticScroll();
-        RightEditor.ScrollToLineIndex(rightLine);
-        LeftEditor.ScrollToLineIndex((int)Math.Round(_diff.MapRightToLeft(rightLine)));
-        Connector.Refresh();
-        Ruler.Refresh();
-    }
+    private void ScrollBothToRightLine(int rightLine) =>
+        Navigate(new PaneNavigation(RightEditor, rightLine + 0.5, _diff.MapRightToLeft(rightLine + 0.5, 0.5), null));
 
     private void Editor_TextChanged(object? sender, EventArgs e)
     {
+        // A remembered jump or alignment refers to the lines as they were.
+        ForgetAlignment();
         if (_loading) return;
         UpdateHeaders();
         ScheduleCompare();
@@ -905,6 +1011,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         if (_matchIndex < 0) _matchIndex = matches.Count - 1;
         if (_matchIndex >= matches.Count) _matchIndex = 0;
         var (line, span) = matches[_matchIndex];
+        TakeLead(editor);
         editor.ScrollToLineIndex(line);
         editor.MoveCaretToLine(line);
         var documentLine = editor.Document?.GetLineByNumber(Math.Min(line + 1, Math.Max(1, editor.DocumentLineCount)));

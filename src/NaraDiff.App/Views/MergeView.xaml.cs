@@ -31,6 +31,14 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     private CancellationTokenSource? _work;
     private DiffTextEditor? _scrollLeader;
     private int _programmaticScrolls;
+    private bool _realignPending;
+    private bool _realignForced;
+    private bool _appliedWordWrap;
+    private MergeNavigation? _pendingNavigation;
+    private readonly PaneFollower _baseFollower = new();
+    private readonly PaneFollower _leftFollower = new();
+    private readonly PaneFollower _rightFollower = new();
+    private readonly Dictionary<DiffTextEditor, double> _lastOffsets = [];
     private bool _loading;
     private bool _resultEdited;
     private bool _disposed;
@@ -72,12 +80,14 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         {
             var pane = editor;
             editor.ViewChanged += Editor_ViewChanged;
+            editor.TextArea.TextView.VisualLinesChanged += (_, _) => ScheduleRealign();
             editor.CaretLineChanged += (_, _) => UpdateFooter();
-            // Whoever the user touches last leads the synchronised scrolling.
-            editor.PreviewMouseWheel += (_, _) => _scrollLeader = pane;
-            editor.PreviewMouseDown += (_, _) => _scrollLeader = pane;
-            editor.PreviewKeyDown += (_, _) => _scrollLeader = pane;
-            editor.GotKeyboardFocus += (_, _) => _scrollLeader = pane;
+            // Whoever the user touches last leads the synchronised scrolling, and touching a pane
+            // ends any jump that was still being re-applied while word-wrapped lines got measured.
+            editor.PreviewMouseWheel += (_, _) => TakeLead(pane);
+            editor.PreviewMouseDown += (_, _) => TakeLead(pane);
+            editor.PreviewKeyDown += (_, _) => TakeLead(pane);
+            editor.GotKeyboardFocus += (_, _) => TakeLead(pane);
         }
         foreach (var target in new[] { MergePane.Left, MergePane.Base, MergePane.Right })
         {
@@ -138,6 +148,8 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         LeftConnector.ShowRibbons = settings.ShowConnectors;
         RightConnector.ShowRibbons = settings.ShowConnectors;
         UpdateVisuals();
+        if (settings.WordWrap != _appliedWordWrap) ScheduleRealign(force: true);
+        _appliedWordWrap = settings.WordWrap;
     }
 
     public void ApplyDiffOptions(DiffOptions options)
@@ -301,6 +313,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
             SetNotice($"{Path.GetFileName(path)} is binary and cannot take part in a three way merge.");
             return;
         }
+        ForgetAlignment();
         _loading = true;
         editor.FilePath = result.Path;
         editor.EncodingChoice = result.Content.Encoding;
@@ -348,6 +361,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
             var result = await ThreeWayMerger.MergeAsync(BaseEditor.GetLines(), LeftEditor.GetLines(), RightEditor.GetLines(), _options, source.Token);
             if (source.IsCancellationRequested) return;
             _merge = result;
+            ForgetAlignment();
             _resultEdited = false;
             RegenerateResult();
             UpdateVisuals();
@@ -367,6 +381,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         if (_merge is null) return;
         var fallback = BaseEditor.LineEnding is LineEndingKind.None or LineEndingKind.Mixed ? LineEndingKind.Lf : BaseEditor.LineEnding;
         _document = _merge.Build(fallback);
+        ForgetAlignment();
         var offset = ResultEditor.TextArea.TextView.ScrollOffset.Y;
         _loading = true;
         ResultEditor.SetContent(LineEndings.Join(_document.Lines));
@@ -540,10 +555,8 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     private void GoToRegion(MergeRegion region)
     {
         BeginProgrammaticScroll();
-        BaseEditor.ScrollToLineIndex(region.BaseStart);
         BaseEditor.MoveCaretToLine(region.BaseStart);
-        LeftEditor.ScrollToLineIndex(region.LeftStart);
-        RightEditor.ScrollToLineIndex(region.RightStart);
+        Navigate(new MergeNavigation(region.BaseStart, region.LeftStart, region.RightStart));
         if (_document is not null && _document.RegionRanges.TryGetValue(region.Index, out var range)) ResultEditor.ScrollToLineIndex(range.Start);
         RefreshConnectors();
         UpdateFooter();
@@ -553,7 +566,15 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
 
     private void Editor_ViewChanged(object? sender, EventArgs e)
     {
-        if (_merge is not null && sender is DiffTextEditor source && CanSynchronizeFrom(source)) Synchronize(source);
+        if (sender is DiffTextEditor source)
+        {
+            var offset = source.TextArea.TextView.ScrollOffset.Y;
+            var previous = _lastOffsets.TryGetValue(source, out var seen) ? seen : offset;
+            _lastOffsets[source] = offset;
+            var scrolled = Math.Abs(offset - previous) >= 1;
+            if (scrolled && _programmaticScrolls == 0) _pendingNavigation = null;
+            if (scrolled && _merge is not null && CanSynchronizeFrom(source)) Synchronize(source, previous, offset);
+        }
         RefreshConnectors();
     }
 
@@ -567,25 +588,144 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         && _programmaticScrolls == 0
         && (_scrollLeader is null || ReferenceEquals(_scrollLeader, source));
 
-    private void Synchronize(DiffTextEditor source)
+    private void Synchronize(DiffTextEditor source, double previousOffset, double offset)
     {
-        if (_merge is null) return;
-        var height = source.LineHeight;
-        if (height <= 0) return;
-        var sourceLine = source.TextArea.TextView.ScrollOffset.Y / height;
+        if (_merge is null || source.LineHeight <= 0) return;
+        foreach (var follower in UpperPanes)
+        {
+            if (ReferenceEquals(follower, source) || follower.LineHeight <= 0) continue;
+            var target = FollowerFor(follower).Step(source, follower, previousOffset, offset, sourceOffset => CanonicalOffset(source, follower, sourceOffset));
+            ScrollPane(follower, target);
+        }
+    }
+
+    private DiffTextEditor[] UpperPanes => [BaseEditor, LeftEditor, RightEditor];
+
+    private PaneFollower FollowerFor(DiffTextEditor pane) =>
+        ReferenceEquals(pane, BaseEditor) ? _baseFollower : ReferenceEquals(pane, LeftEditor) ? _leftFollower : _rightFollower;
+
+    private double CanonicalOffset(DiffTextEditor source, DiffTextEditor target, double sourceOffset)
+    {
+        var merge = _merge!;
+        var fraction = source.GetSyncFraction(sourceOffset);
+        var sourceLine = source.GetLineAtViewportFraction(sourceOffset, fraction);
+        var bias = fraction;
         double baseLine;
         if (ReferenceEquals(source, BaseEditor)) baseLine = sourceLine;
-        else if (ReferenceEquals(source, LeftEditor)) baseLine = _merge.LeftDiff.MapRightToLeft(sourceLine);
-        else if (ReferenceEquals(source, RightEditor)) baseLine = _merge.RightDiff.MapRightToLeft(sourceLine);
-        else baseLine = ResultLineToBase((int)sourceLine);
-        var targets = new List<(DiffTextEditor Editor, double Offset)>(3);
-        if (!ReferenceEquals(source, BaseEditor)) targets.Add((BaseEditor, Math.Max(0, baseLine * BaseEditor.LineHeight)));
-        if (!ReferenceEquals(source, LeftEditor)) targets.Add((LeftEditor, Math.Max(0, _merge.LeftDiff.MapLeftToRight(baseLine) * LeftEditor.LineHeight)));
-        if (!ReferenceEquals(source, RightEditor)) targets.Add((RightEditor, Math.Max(0, _merge.RightDiff.MapLeftToRight(baseLine) * RightEditor.LineHeight)));
-        var pending = targets.Where(target => Math.Abs(target.Editor.TextArea.TextView.ScrollOffset.Y - target.Offset) >= 1).ToList();
-        if (pending.Count == 0) return;
+        else if (ReferenceEquals(source, LeftEditor)) baseLine = merge.LeftDiff.MapRightToLeft(sourceLine, fraction);
+        else if (ReferenceEquals(source, RightEditor)) baseLine = merge.RightDiff.MapRightToLeft(sourceLine, fraction);
+        else (baseLine, bias) = ResultToBase(sourceLine, fraction);
+        var line = ReferenceEquals(target, BaseEditor) ? baseLine
+            : ReferenceEquals(target, LeftEditor) ? merge.LeftDiff.MapLeftToRight(baseLine, bias)
+            : merge.RightDiff.MapLeftToRight(baseLine, bias);
+        var levelY = fraction * (ReferenceEquals(source, ResultEditor) ? BaseEditor.ScrollViewportHeight : source.ScrollViewportHeight);
+        return target.GetOffsetPlacingLineAt(line, levelY);
+    }
+
+    private (double Line, double Bias) ResultToBase(double resultLine, double fraction)
+    {
+        if (_merge is null || _document is null) return (resultLine, fraction);
+        const double tolerance = 1e-9;
+        double resultEnd = 0, baseEnd = 0;
+        foreach (var region in _merge.Regions)
+        {
+            if (!_document.RegionRanges.TryGetValue(region.Index, out var range)) continue;
+            if (range.Count == 0)
+            {
+                if (Math.Abs(resultLine - range.Start) < tolerance) return (region.BaseStart + fraction * region.BaseCount, fraction);
+            }
+            else if (resultLine < range.Start + range.Count)
+            {
+                var through = Math.Clamp((resultLine - range.Start) / range.Count, 0, 1);
+                return region.BaseCount > 0 ? (region.BaseStart + through * region.BaseCount, fraction) : (region.BaseStart, through);
+            }
+            resultEnd = range.Start + range.Count;
+            baseEnd = region.BaseStart + region.BaseCount;
+        }
+        return (baseEnd + (resultLine - resultEnd), fraction);
+    }
+
+    private void ScrollPane(DiffTextEditor pane, double offset)
+    {
+        if (pane.LineHeight <= 0 || Math.Abs(pane.TextArea.TextView.ScrollOffset.Y - offset) < 1) return;
         BeginProgrammaticScroll();
-        foreach (var (editor, offset) in pending) editor.ScrollToVerticalOffset(offset);
+        pane.ScrollToVerticalOffset(offset);
+    }
+
+    private void TakeLead(DiffTextEditor pane)
+    {
+        _scrollLeader = pane;
+        _pendingNavigation = null;
+        foreach (var other in new[] { LeftEditor, BaseEditor, RightEditor, ResultEditor })
+            if (!ReferenceEquals(other, pane)) other.StopInertia();
+    }
+
+    private void ForgetAlignment()
+    {
+        _pendingNavigation = null;
+        _baseFollower.Reset();
+        _leftFollower.Reset();
+        _rightFollower.Reset();
+    }
+
+    private sealed record MergeNavigation(double BaseLine, double LeftLine, double RightLine);
+
+    private void Navigate(MergeNavigation navigation)
+    {
+        if (_merge is null) return;
+        foreach (var pane in new[] { LeftEditor, BaseEditor, RightEditor, ResultEditor }) pane.StopInertia();
+        ForgetAlignment();
+        _scrollLeader = BaseEditor;
+        _pendingNavigation = _settings.WordWrap ? navigation : null;
+        var baseOffset = BaseEditor.GetCenteredOffset(navigation.BaseLine);
+        var levelY = BaseEditor.GetDocumentYOfLine(navigation.BaseLine) - baseOffset;
+        ScrollPane(BaseEditor, baseOffset);
+        ScrollPane(LeftEditor, NavigationOffset(LeftEditor, navigation.LeftLine, baseOffset, levelY));
+        ScrollPane(RightEditor, NavigationOffset(RightEditor, navigation.RightLine, baseOffset, levelY));
+        RefreshConnectors();
+    }
+
+    private double NavigationOffset(DiffTextEditor side, double line, double baseOffset, double levelY)
+    {
+        var offset = CanonicalOffset(BaseEditor, side, baseOffset);
+        var shownAt = side.GetDocumentYOfLine(line) - offset;
+        return shownAt < 0 || shownAt > side.ScrollViewportHeight - side.LineHeight ? side.GetOffsetPlacingLineAt(line, levelY) : offset;
+    }
+
+    private void ScheduleRealign(bool force = false)
+    {
+        _realignForced |= force;
+        if ((!_settings.WordWrap && !_realignForced) || _realignPending || _merge is null) return;
+        _realignPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Realign));
+    }
+
+    private void Realign()
+    {
+        _realignPending = false;
+        if (_disposed || _merge is null)
+        {
+            _realignForced = false;
+            return;
+        }
+        if (_programmaticScrolls != 0)
+        {
+            ScheduleRealign();
+            return;
+        }
+        _realignForced = false;
+        if (_pendingNavigation is { } navigation)
+        {
+            Navigate(navigation);
+            return;
+        }
+        if (_scrollLeader is not { } leader || !CanSynchronizeFrom(leader)) return;
+        var offset = leader.TextArea.TextView.ScrollOffset.Y;
+        foreach (var follower in UpperPanes)
+        {
+            if (ReferenceEquals(follower, leader) || !FollowerFor(follower).IsTracking(leader, follower)) continue;
+            ScrollPane(follower, FollowerFor(follower).Step(leader, follower, offset, offset, sourceOffset => CanonicalOffset(leader, follower, sourceOffset)));
+        }
     }
 
     /// <summary>Marks scrolls started from code so their delayed events do not synchronise again.</summary>
@@ -598,11 +738,8 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     private void ScrollAllToBaseLine(int baseLine)
     {
         if (_merge is null) return;
-        BeginProgrammaticScroll();
-        BaseEditor.ScrollToLineIndex(baseLine);
-        LeftEditor.ScrollToLineIndex((int)Math.Round(_merge.LeftDiff.MapLeftToRight(baseLine)));
-        RightEditor.ScrollToLineIndex((int)Math.Round(_merge.RightDiff.MapLeftToRight(baseLine)));
-        RefreshConnectors();
+        var line = baseLine + 0.5;
+        Navigate(new MergeNavigation(line, _merge.LeftDiff.MapLeftToRight(line, 0.5), _merge.RightDiff.MapLeftToRight(line, 0.5)));
     }
 
     private void RefreshConnectors()
