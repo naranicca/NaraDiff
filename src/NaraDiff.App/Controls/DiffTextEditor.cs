@@ -270,9 +270,9 @@ public sealed class DiffTextEditor : TextEditor
         var clamped = Math.Clamp(lineIndex, 0, Math.Max(0, document.LineCount - 1));
         try
         {
-            var top = view.GetVisualTopByDocumentLine(clamped + 1) - view.ScrollOffset.Y;
-            if (lineIndex >= document.LineCount) top += view.DefaultLineHeight;
-            return top;
+            if (lineIndex >= document.LineCount)
+                return view.DocumentHeight - view.ScrollOffset.Y + (lineIndex - document.LineCount) * view.DefaultLineHeight;
+            return view.GetVisualTopByDocumentLine(clamped + 1) - view.ScrollOffset.Y;
         }
         catch (ArgumentException)
         {

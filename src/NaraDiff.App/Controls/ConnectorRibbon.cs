@@ -130,8 +130,7 @@ public sealed class ConnectorRibbon : FrameworkElement
             var rightBottom = ToLocal(RightEditor, DiffBackgroundRenderer.SnapRowBeforeBoundary(RightEditor.GetLineBottom(link.RightStart + Math.Max(0, link.RightCount) - 1)));
             if (link.RightCount == 0) rightBottom = rightTop+1;
             var showRibbon = ShowRibbons
-                && IntersectsViewport(leftTop, leftBottom, height)
-                && IntersectsViewport(rightTop, rightBottom, height);
+                && IntersectsViewport(Math.Min(leftTop, rightTop), Math.Max(leftBottom, rightBottom), height);
             var ribbon = RibbonGeometry.Build(leftTop, leftBottom, rightTop, rightBottom, curveWidth);
             if (showRibbon)
             {

@@ -61,9 +61,16 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
             if (Decorations.TryGetBoundaryMarker(lineIndex, out var markerBrush) && markerBrush is not null) DrawBoundaryMarker(drawingContext, markerBrush, top, width);
             lastVisualLine = visualLine;
         }
-        if (lastVisualLine is not null &&
+        if (EndBoundaryY(textView, lastVisualLine) is { } endBoundary &&
             Decorations.TryGetBoundaryMarker(textView.Document.LineCount, out var endMarkerBrush) && endMarkerBrush is not null)
-            DrawBoundaryMarker(drawingContext, endMarkerBrush, SnapRowAfterBoundary(lastVisualLine.VisualTop - scroll), width);
+            DrawBoundaryMarker(drawingContext, endMarkerBrush, endBoundary, width);
+    }
+
+    internal static double? EndBoundaryY(TextView textView, VisualLine? lastVisualLine)
+    {
+        if (lastVisualLine is null || textView.Document is null) return null;
+        if (lastVisualLine.LastDocumentLine.LineNumber != textView.Document.LineCount) return null;
+        return Math.Round(lastVisualLine.VisualTop + lastVisualLine.Height - textView.ScrollOffset.Y, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>

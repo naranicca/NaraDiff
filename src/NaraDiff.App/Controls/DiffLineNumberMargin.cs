@@ -45,8 +45,9 @@ internal sealed class DiffLineNumberMargin(DiffBackgroundRenderer renderer) : Li
                     DrawBoundaryMarker(drawingContext, markerBrush, top, width);
                 lastVisualLine = visualLine;
             }
-            if (lastVisualLine is not null && renderer.Decorations.TryGetBoundaryMarker(textView.Document.LineCount, out var endMarkerBrush) && endMarkerBrush is not null)
-                DrawBoundaryMarker(drawingContext, endMarkerBrush, DiffBackgroundRenderer.SnapRowAfterBoundary(lastVisualLine.VisualTop - scroll), width);
+            if (DiffBackgroundRenderer.EndBoundaryY(textView, lastVisualLine) is { } endBoundary &&
+                renderer.Decorations.TryGetBoundaryMarker(textView.Document.LineCount, out var endMarkerBrush) && endMarkerBrush is not null)
+                DrawBoundaryMarker(drawingContext, endMarkerBrush, endBoundary, width);
         }
         base.OnRender(drawingContext);
     }

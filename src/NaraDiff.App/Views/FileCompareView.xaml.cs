@@ -492,7 +492,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             });
             marks.Add(new OverviewMark
             {
-                Start = block.RightCount > 0 ? block.RightStart : Math.Max(0, block.RightStart - 1),
+                Start = Math.Min(block.RightStart, Math.Max(0, RightEditor.DocumentLineCount - 1)),
                 Count = Math.Max(1, block.RightCount),
                 Brush = palette.StrokeFor(block.Kind, block.IsMoved)
             });
