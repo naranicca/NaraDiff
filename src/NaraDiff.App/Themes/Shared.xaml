@@ -130,7 +130,7 @@
     </Setter>
   </Style>
 
-  <Style x:Key="StartTitle" TargetType="controls:IconButton">
+  <Style x:Key="StartTile" TargetType="controls:IconButton">
     <Setter Property="Width" Value="208"/>
     <Setter Property="Height" Value="168"/>
     <Setter Property="Margin" Value="8,0"/>
@@ -144,7 +144,8 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="controls:IconButton">
-          <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="16">
+          <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="16">
             <StackPanel VerticalAlignment="Center">
               <Path Width="40" Height="40" Stretch="Uniform" HorizontalAlignment="Center" Data="{TemplateBinding Icon}"
                     Stroke="{TemplateBinding Foreground}" StrokeThickness="1.4" StrokeLineJoin="Round"
@@ -168,7 +169,7 @@
       </Setter.Value>
     </Setter>
   </Style>
-            
+
   <Style TargetType="controls:IconToggleButton">
     <Setter Property="Height" Value="28"/>
     <Setter Property="MinWidth" Value="30"/>

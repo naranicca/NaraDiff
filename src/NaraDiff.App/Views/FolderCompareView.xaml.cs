@@ -14,7 +14,7 @@ using NaraDiff.Infrastructure.Logging;
 
 namespace NaraDiff.App.Views;
 
-///  <summary>A file pair to open, with the names its two sides go by when their paths do not say it.</summary>
+/// <summary>A file pair to open, with the names its two sides go by when their paths do not say it.</summary>
 public sealed record FilePairRequest(string Left, string Right, string? LeftLabel = null, string? RightLabel = null);
 
 /// <summary>One row of the folder comparison tree.</summary>
@@ -329,7 +329,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _gitComparison = null;
         if (!Directory.Exists(folder))
         {
-            Report("Select the folder of a Git repository");
+            Report("Select the folder of a Git repository.");
             return;
         }
         Report($"Reading the changes of {SafeName(folder)}...");
@@ -352,7 +352,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _settings.RememberFolder(folder);
         _result = _gitComparison.Result;
         RebuildTree();
-        Report("Git changes: HEAD — working tree");
+        SetFooter("Git changes: HEAD — working tree");
         TitleChanged?.Invoke(this, EventArgs.Empty);
     }
 
