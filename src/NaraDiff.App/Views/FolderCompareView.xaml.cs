@@ -14,6 +14,9 @@ using NaraDiff.Infrastructure.Logging;
 
 namespace NaraDiff.App.Views;
 
+/// <summary>A file pair to open, with the names its two sides go by when their paths do not say it.</summary>
+public sealed record FilePairRequest(string Left, string Right, string? LeftLabel = null, string? RightLabel = null);
+
 /// <summary>One row of the folder comparison tree.</summary>
 public sealed class FolderRow
 {
@@ -73,6 +76,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private FolderComparisonResult? _result;
     private CancellationTokenSource? _comparison;
     private GitWorktreeComparer? _gitComparison;
+    private readonly bool _versionControl;
     private bool _suppressEvents;
     private bool _disposed;
     private StylusDevice? _panningStylus;
@@ -84,12 +88,13 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private bool _isStylusPanning;
     private readonly InertialPan _stylusInertia;
 
-    public FolderCompareView(AppSettings settings, FileLogger logger)
+    public FolderCompareView(AppSettings settings, FileLogger logger, bool versionControl = false)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(logger);
         _settings = settings;
         _logger = logger;
+        _versionControl = versionControl;
         _diffOptions = settings.DiffOptions.Sanitized();
         InitializeComponent();
         _stylusInertia = new InertialPan(delta =>
@@ -113,7 +118,8 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         Tree.PreviewStylusMove += Tree_StylusPanMove;
         Tree.PreviewStylusUp += Tree_StylusPanUp;
         Tree.LostStylusCapture += (_, _) => EndTreeStylusPan();
-        foreach (var (box, left) in new[] { (LeftPathBox, true), (RightPathBox, false) })
+        var boxes = versionControl ? [(LeftPathBox, true)] : new[] { (LeftPathBox, true), (RightPathBox, false) };
+        foreach (var (box, left) in boxes)
         {
             var isLeft = left;
             box.AllowDrop = true;
@@ -121,6 +127,38 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             box.PreviewDragOver += (_, e) => SetFolderDropEffect(e);
             box.PreviewDrop += async (_, e) => await HandleFolderDrop(isLeft, e);
         }
+        if (versionControl) ShowOneFolderOnly();
+        LeftPathBox.TextChanged += (_, _) => ShowHint(PendingHint());
+        RightPathBox.TextChanged += (_, _) => ShowHint(PendingHint());
+        ShowHint(PendingHint());
+    }
+
+    private void ShowHint(string text)
+    {
+        var empty = Tree.ItemsSource is not IEnumerable<FolderRow> rows || !rows.Any();
+        EmptyHint.Text = text;
+        EmptyHint.Visibility = text.Length > 0 && empty ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private string PendingHint()
+    {
+        var left = Directory.Exists(LeftPathBox.Text.Trim());
+        if (_versionControl) return left ? "Press Enter to show this repository's changes." : "Select a Git repository.";
+        var right = Directory.Exists(RightPathBox.Text.Trim());
+        return left && right ? "Press Compare to compare these folders."
+            : left || right ? "Select the other folder, then press Compare."
+            : "Select two folders and press Compare.";
+    }
+
+    private void ShowOneFolderOnly()
+    {
+        LeftLabel.Text = "Repository";
+        LeftPathBox.ToolTip = "The Git repository whose changes are shown";
+        RightLabel.Visibility = Visibility.Collapsed;
+        RightPathBox.Visibility = Visibility.Collapsed;
+        RightBrowseButton.Visibility = Visibility.Collapsed;
+        RightPathColumn.Width = new GridLength(0);
+        CompareActions.Visibility = Visibility.Collapsed;
     }
 
     public event EventHandler? TitleChanged;
@@ -128,7 +166,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     public event EventHandler? StatusChanged;
 
     /// <summary>Raised when the user opens a file pair from the tree.</summary>
-    public event EventHandler<(string Left, string Right)>? FileComparisonRequested;
+    public event EventHandler<FilePairRequest>? FileComparisonRequested;
 
     public string Title
     {
@@ -136,7 +174,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         {
             var left = SafeName(LeftPathBox.Text);
             var right = SafeName(RightPathBox.Text);
-            return left.Length == 0 && right.Length == 0 ? "Folders" : $"{left} — {right}";
+            if (_versionControl) return left.Length == 0 ? "Version control" : $"Git: {left}";
+            if (left.Length == 0 && right.Length == 0) return "Folders";
+            if (left.Length == 0 || right.Length == 0) return left.Length == 0 ? right : left;
+            return $"{left} — {right}";
         }
     }
 
@@ -149,8 +190,11 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     public async Task OpenAsync(string? leftPath, string? rightPath)
     {
         if (!string.IsNullOrWhiteSpace(leftPath)) LeftPathBox.Text = leftPath;
-        if (!string.IsNullOrWhiteSpace(rightPath)) RightPathBox.Text = rightPath;
-        if (Directory.Exists(LeftPathBox.Text) || Directory.Exists(RightPathBox.Text)) await CompareAsync();
+        if (!string.IsNullOrWhiteSpace(rightPath) && !_versionControl) RightPathBox.Text = rightPath;
+        var ready = _versionControl
+            ? Directory.Exists(LeftPathBox.Text)
+            : Directory.Exists(LeftPathBox.Text) && Directory.Exists(RightPathBox.Text);
+        if (ready) await CompareAsync();
     }
 
     public void ApplySettings(AppSettings settings)
@@ -279,31 +323,51 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         MaxContentCompareBytes = _settings.FolderOptions.MaxContentCompareBytes
     };
 
+    private async Task CompareWorkingTreeAsync(string folder)
+    {
+        _gitComparison?.Dispose();
+        _gitComparison = null;
+        if (!Directory.Exists(folder))
+        {
+            Report("Select the folder of a Git repository.");
+            return;
+        }
+        Report($"Reading the changes of {SafeName(folder)}...");
+        try
+        {
+            _gitComparison = await GitWorktreeComparer.CreateAsync(folder, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            // Git may be missing from the machine, or the repository may be unreadable.
+            _logger.Error("git-compare", ex);
+            Report($"The changes of {SafeName(folder)} could not be read: {ex.Message}");
+            return;
+        }
+        if (_gitComparison is null)
+        {
+            Report($"{SafeName(folder)} is not a Git repository.");
+            return;
+        }
+        _settings.RememberFolder(folder);
+        _result = _gitComparison.Result;
+        RebuildTree();
+        SetFooter("Git changes: HEAD — working tree");
+        TitleChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     private async Task CompareAsync()
     {
         var left = LeftPathBox.Text.Trim();
         var right = RightPathBox.Text.Trim();
-        var singleFolder = Directory.Exists(left) && string.IsNullOrWhiteSpace(right)
-            ? left
-            : Directory.Exists(right) && string.IsNullOrWhiteSpace(left) ? right : null;
-        if (singleFolder is not null)
+        if (_versionControl)
         {
-            _gitComparison?.Dispose();
-            _gitComparison = await GitWorktreeComparer.CreateAsync(singleFolder, CancellationToken.None);
-            if (_gitComparison is null)
-            {
-                SetFooter("Enter both folders, or select a Git repository to view its working-tree changes.");
-                return;
-            }
-            _result = _gitComparison.Result;
-            RebuildTree();
-            SetFooter("Git changes: HEAD — working tree");
-            TitleChanged?.Invoke(this, EventArgs.Empty);
+            await CompareWorkingTreeAsync(left);
             return;
         }
         if (!Directory.Exists(left) || !Directory.Exists(right))
         {
-            SetFooter("Both folders must exist before they can be compared.");
+            Report("Both folders must exist before they can be compared.");
             return;
         }
         _gitComparison?.Dispose();
@@ -319,6 +383,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         CompareButton.IsEnabled = false;
         CancelButton.IsEnabled = true;
         Progress.Visibility = Visibility.Visible;
+        Report($"Comparing {SafeName(left)} and {SafeName(right)}...");
         var progress = new Progress<string>(path => SetFooter($"Scanning {path}"));
         try
         {
@@ -328,12 +393,12 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         }
         catch (OperationCanceledException)
         {
-            SetFooter("The comparison was cancelled.");
+            Report("The comparison was cancelled.");
         }
         catch (Exception ex)
         {
             _logger.Error("folder-compare", ex);
-            SetFooter($"The folders could not be compared: {ex.Message}");
+            Report($"The folders could not be compared: {ex.Message}");
         }
         finally
         {
@@ -355,10 +420,9 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             if (row is not null) rows.Add(row);
         }
         Tree.ItemsSource = rows;
-        EmptyHint.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        EmptyHint.Text = rows.Count == 0
-            ? _result.AreIdentical ? "The folders are identical." : "No entry matches the current filter."
-            : string.Empty;
+        ShowHint(rows.Count == 0
+            ? _result.AreIdentical ? (_versionControl ? "This repository has no changes." : "The folders are identical.") : "No entry matches the current filter."
+            : string.Empty);
         var statistics = _result.Statistics;
         StatusText = $"{statistics.Files:N0} files, {statistics.Directories:N0} folders: {statistics.Modified:N0} modified, {statistics.LeftOnly:N0} only left, {statistics.RightOnly:N0} only right, {statistics.Same:N0} identical" +
                      (statistics.Errors > 0 ? $", {statistics.Errors:N0} errors" : string.Empty);
@@ -431,11 +495,24 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         return name.Length == 0 ? trimmed : name;
     }
 
+    private void Report(string text)
+    {
+        SetFooter(text);
+        ShowHint(text);
+    }
+
     private void SetFooter(string text)
     {
         FooterText.Text = text;
         StatusText = text;
         StatusChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private async void Path_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        await CompareAsync();
     }
 
     private void BrowseLeft_Click(object sender, RoutedEventArgs e) => Browse(LeftPathBox);
@@ -444,12 +521,11 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private void Browse(TextBox target)
     {
-        var dialog = new OpenFolderDialog { Title = "Select a folder" };
+        var dialog = new OpenFolderDialog { Title = _versionControl ? "Select a Git repository" : "Select a folder" };
         if (Directory.Exists(target.Text)) dialog.InitialDirectory = target.Text;
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         target.Text = dialog.FolderName;
-        if (ReferenceEquals(target, LeftPathBox) && string.IsNullOrWhiteSpace(RightPathBox.Text)) _ = CompareAsync();
-        if (ReferenceEquals(target, RightPathBox) && string.IsNullOrWhiteSpace(LeftPathBox.Text)) _ = CompareAsync();
+        if (_versionControl) _ = CompareAsync();
     }
 
     private static void SetFolderDropEffect(DragEventArgs e)
@@ -573,7 +649,9 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         }
         var left = entry.Left?.FullPath ?? Path.Combine(_result.LeftPath, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         var right = entry.Right?.FullPath ?? Path.Combine(_result.RightPath, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));
-        FileComparisonRequested?.Invoke(this, (left, right));
+        FileComparisonRequested?.Invoke(this, _versionControl
+            ? new FilePairRequest(left, right, "HEAD", "working tree")
+            : new FilePairRequest(left, right));
     }
 
     private void Sync_Click(object sender, RoutedEventArgs e)

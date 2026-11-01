@@ -46,7 +46,8 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Opens what the command line asked for: two files, two folders, or a three way merge
-    /// (<c>NaraDiff base local remote [merged]</c>).
+    /// (<c>NaraDiff base local remote [merged]</c>). With no paths nothing is opened and the window
+    /// starts empty, on its start screen.
     /// </summary>
     public async Task HandleCommandLineAsync(string[] args)
     {
@@ -70,9 +71,9 @@ public partial class MainWindow : Window
             {
                 if (Directory.Exists(paths[0])) await NewFolderCompareAsync(paths[0], null);
                 else await NewFileCompareAsync(paths[0], null);
-                return;
             }
-            await NewFileCompareAsync(null, null);
+            // Nothing on the command line opens nothing: the window starts on the start screen, where
+            // the three tiles ask what to compare, rather than on an empty file comparison.
         }
         catch (Exception ex)
         {
@@ -132,7 +133,7 @@ public partial class MainWindow : Window
         };
         Tabs.Items.Add(item);
         Tabs.SelectedItem = item;
-        EmptyHint.Visibility = Visibility.Collapsed;
+        StartPanel.Visibility = Visibility.Collapsed;
         UpdateCommandState();
         return item;
     }
@@ -147,15 +148,16 @@ public partial class MainWindow : Window
             view.Close();
         }
         Tabs.Items.Remove(item);
-        EmptyHint.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        StartPanel.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         StatusText.Text = ActiveView?.StatusText ?? string.Empty;
         UpdateCommandState();
     }
 
-    private async Task NewFileCompareAsync(string? left, string? right)
+    private async Task NewFileCompareAsync(string? left, string? right, string? leftLabel = null, string? rightLabel = null)
     {
         var view = new FileCompareView(_settings, _logger);
         view.FolderComparisonRequested += async (_, pair) => await SwitchToFolderCompareAsync(view, pair.Left, pair.Right);
+        if (leftLabel is not null || rightLabel is not null) view.SetPaneLabels(leftLabel, rightLabel);
         AddTab(view, view);
         await view.OpenAsync(left, right);
     }
@@ -166,14 +168,14 @@ public partial class MainWindow : Window
         if (item is null) return;
         Tabs.Items.Remove(item);
         source.Close();
-        EmptyHint.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        StartPanel.Visibility = Tabs.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         await NewFolderCompareAsync(left, right);
     }
 
     private async Task NewFolderCompareAsync(string? left, string? right)
     {
         var view = new FolderCompareView(_settings, _logger);
-        view.FileComparisonRequested += async (_, pair) => await NewFileCompareAsync(pair.Left, pair.Right);
+        view.FileComparisonRequested += async (_, pair) => await NewFileCompareAsync(pair.Left, pair.Right, pair.LeftLabel, pair.RightLabel);
         AddTab(view, view);
         await view.OpenAsync(left, right);
     }
@@ -207,6 +209,23 @@ public partial class MainWindow : Window
     private async void NewFileCompare_Click(object sender, RoutedEventArgs e) => await NewFileCompareAsync(null, null);
 
     private async void NewFolderCompare_Click(object sender, RoutedEventArgs e) => await NewFolderCompareAsync(null, null);
+
+    private async void NewVersionControl_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Select a Git repository" };
+        var recent = _settings.RecentFolders.FirstOrDefault(Directory.Exists);
+        if (recent is not null) dialog.InitialDirectory = recent;
+        if (dialog.ShowDialog(this) != true) return;
+        await NewVersionControlAsync(dialog.FolderName);
+    }
+
+    private async Task NewVersionControlAsync(string? folder)
+    {
+        var view = new FolderCompareView(_settings, _logger, versionControl: true);
+        view.FileComparisonRequested += async (_, pair) => await NewFileCompareAsync(pair.Left, pair.Right, pair.LeftLabel, pair.RightLabel);
+        AddTab(view, view);
+        await view.OpenAsync(folder, null);
+    }
 
     private async void NewMerge_Click(object sender, RoutedEventArgs e) => await NewMergeAsync(null, null, null, null);
 
@@ -317,6 +336,9 @@ public partial class MainWindow : Window
                 break;
             case Key.M when control:
                 NewMerge_Click(sender, e);
+                break;
+            case Key.G when control:
+                NewVersionControl_Click(sender, e);
                 break;
             case Key.W when control:
                 if (Tabs.SelectedItem is TabItem item) CloseTab(item);
