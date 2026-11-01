@@ -113,14 +113,33 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     public event EventHandler<(string? Left, string? Right)>? FolderComparisonRequested;
 
+    private string? _leftLabel;
+    private string? _rightLabel;
+
     public string Title
     {
         get
         {
-            var left = System.IO.Path.GetFileName(LeftEditor.FilePath) ?? "untitled";
-            var right = System.IO.Path.GetFileName(RightEditor.FilePath) ?? "untitled";
+            if (_leftLabel is not null && _rightLabel is not null)
+                return $"{ComparedFileName()} ({_leftLabel}, {_rightLabel})";
+            var (left, right) = PathNaming.Shorten(LeftEditor.FilePath, RightEditor.FilePath);
             return $"{left} — {right}";
         }
+    }
+
+    private string ComparedFileName()
+    {
+        var name = System.IO.Path.GetFileName(LeftEditor.FilePath);
+        if (string.IsNullOrEmpty(name)) name = System.IO.Path.GetFileName(RightEditor.FilePath);
+        return string.IsNullOrEmpty(name) ? "untitled" : name;
+    }
+
+    public void SetPanelLabels(string? left, string? right)
+    {
+        _leftLabel = left;
+        _rightLabel = right;
+        UpdateHeaders();
+        TitleChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public string StatusText { get; private set; } = "No comparison yet";
@@ -842,10 +861,20 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     private void UpdateHeaders()
     {
+        LeftHeader.PathText = HeaderPath(LeftEditor, _leftLabel);
+        RightHeader.PathText = HeaderPath(RightEditor, _rightLabel);
         LeftSettings.SetState(Describe(LeftEditor), LeftEditor.IsReadOnly, LeftEditor.IsModified);
         RightSettings.SetState(Describe(RightEditor), RightEditor.IsReadOnly, RightEditor.IsModified);
         LeftHeader.CanSave = !LeftEditor.IsReadOnly;
         RightHeader.CanSave = !RightEditor.IsReadOnly;
+    }
+
+    private static string HeaderPath(DiffTextEditor editor, string? label)
+    {
+        var path = editor.FilePath ?? string.Empty;
+        return label is not null && path.StartsWith(System.IO.Path.GetTempPath(), StringComparison.OrdinalIgnoreCase)
+            ? $"{System.IO.Path.GetFileName(path)} — {label}"
+            : path;
     }
 
     private static string Describe(DiffTextEditor editor)
@@ -913,6 +942,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             return;
         var left = LeftEditor.FilePath;
         var right = RightEditor.FilePath;
+        SetPanelLabels(_rightLabel, _leftLabel);
         _ = OpenAsync(right, left);
     }
 

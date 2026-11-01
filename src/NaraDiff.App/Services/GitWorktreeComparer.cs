@@ -30,7 +30,15 @@ internal sealed class GitWorktreeComparer : IDisposable
 
     public static async Task<GitWorktreeComparer?> CreateAsync(string folder, CancellationToken cancellationToken)
     {
-        var root = (await RunGitAsync(folder, "rev-parse", "--show-toplevel", cancellationToken)).Trim();
+        string root;
+        try
+        {
+            root = (await RunGitAsync(folder, "rev-parse", "--show-toplevel", cancellationToken)).Trim();
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
         if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return null;
         root = Path.GetFullPath(root);
         var snapshot = Path.Combine(Path.GetTempPath(), "NaraDiff", "git", Guid.NewGuid().ToString("N"));
