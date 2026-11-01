@@ -157,7 +157,7 @@ public partial class MainWindow : Window
     {
         var view = new FileCompareView(_settings, _logger);
         view.FolderComparisonRequested += async (_, pair) => await SwitchToFolderCompareAsync(view, pair.Left, pair.Right);
-        if (leftLabel is not null || rightLabel is not null) view.SetPanelLabels(leftLabel, rightLabel);
+        if (leftLabel is not null || rightLabel is not null) view.SetPaneLabels(leftLabel, rightLabel);
         AddTab(view, view);
         await view.OpenAsync(left, right);
     }

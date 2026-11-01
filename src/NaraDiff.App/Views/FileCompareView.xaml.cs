@@ -134,7 +134,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         return string.IsNullOrEmpty(name) ? "untitled" : name;
     }
 
-    public void SetPanelLabels(string? left, string? right)
+    public void SetPaneLabels(string? left, string? right)
     {
         _leftLabel = left;
         _rightLabel = right;
@@ -942,7 +942,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             return;
         var left = LeftEditor.FilePath;
         var right = RightEditor.FilePath;
-        SetPanelLabels(_rightLabel, _leftLabel);
+        SetPaneLabels(_rightLabel, _leftLabel);
         _ = OpenAsync(right, left);
     }
 

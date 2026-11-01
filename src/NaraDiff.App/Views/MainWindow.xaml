@@ -20,7 +20,7 @@
                              ToolTip="Compare two files (Ctrl+N)"/>
         <controls:IconButton Icon="{DynamicResource IconCompareFolders}" Label="Compare folders" Click="NewFolderCompare_Click"
                              ToolTip="Compare two folders (Ctrl+Shift+N)"/>
-        <controls:IconButton Icon="{DynamicResource IconVersionControl}" Label="Version Control" Click="NewVersionControl_Click"
+        <controls:IconButton Icon="{DynamicResource IconVersionControl}" Label="Version control" Click="NewVersionControl_Click"
                              ToolTip="Open a Git repository's working-tree changes (Ctrl+G)"/>
         <controls:IconButton Icon="{DynamicResource IconMerge}" Label="3-way merge" Click="NewMerge_Click"
                              ToolTip="Merge two variants against a base file (Ctrl+M)"/>
@@ -56,13 +56,13 @@
       <StackPanel x:Name="StartPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
         <TextBlock Text="What would you like to compare?" FontSize="18" HorizontalAlignment="Center"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,24,0,0">
-          <controls:IconButton Style="{DynamicResource StartTitle}" Icon="{DynamicResource IconCompareFiles}"
+          <controls:IconButton Style="{DynamicResource StartTile}" Icon="{DynamicResource IconCompareFiles}"
                                Label="File comparison" Content="Compare and merge two files"
                                Click="NewFileCompare_Click" ToolTip="Compare two files (Ctrl+N)"/>
-          <controls:IconButton Style="{DynamicResource StartTitle}" Icon="{DynamicResource IconCompareFolders}"
+          <controls:IconButton Style="{DynamicResource StartTile}" Icon="{DynamicResource IconCompareFolders}"
                                Label="Folder comparison" Content="Compare two folders recursively"
                                Click="NewFolderCompare_Click" ToolTip="Compare two folders (Ctrl+Shift+N)"/>
-          <controls:IconButton Style="{DynamicResource StartTitle}" Icon="{DynamicResource IconVersionControl}"
+          <controls:IconButton Style="{DynamicResource StartTile}" Icon="{DynamicResource IconVersionControl}"
                                Label="Version control" Content="Show a Git repository's changes"
                                Click="NewVersionControl_Click" ToolTip="Open a Git repository's working-tree changes (Ctrl+G)"/>
         </StackPanel>

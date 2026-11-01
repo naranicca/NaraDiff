@@ -329,7 +329,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _gitComparison = null;
         if (!Directory.Exists(folder))
         {
-            SetFooter("Select the folder of a Git repository");
+            Report("Select the folder of a Git repository");
             return;
         }
         Report($"Reading the changes of {SafeName(folder)}...");
@@ -339,7 +339,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         }
         catch (Exception ex)
         {
-            // Git may be missing from the machine, or the repository may be unreedable.
+            // Git may be missing from the machine, or the repository may be unreadable.
             _logger.Error("git-compare", ex);
             Report($"The changes of {SafeName(folder)} could not be read: {ex.Message}");
             return;
@@ -352,7 +352,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _settings.RememberFolder(folder);
         _result = _gitComparison.Result;
         RebuildTree();
-        SetFooter($"Git changes: HEAD — working tree");
+        Report("Git changes: HEAD — working tree");
         TitleChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -650,7 +650,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var left = entry.Left?.FullPath ?? Path.Combine(_result.LeftPath, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         var right = entry.Right?.FullPath ?? Path.Combine(_result.RightPath, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         FileComparisonRequested?.Invoke(this, _versionControl
-            ? new FilePairRequest(left, right, "HEAD", "Working tree")
+            ? new FilePairRequest(left, right, "HEAD", "working tree")
             : new FilePairRequest(left, right));
     }
 
