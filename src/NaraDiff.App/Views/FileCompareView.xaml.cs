@@ -115,6 +115,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     private string? _leftLabel;
     private string? _rightLabel;
+    private bool _goToFirstChange;
 
     public string Title
     {
@@ -159,6 +160,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(leftPath)) await LoadSideAsync(true, leftPath!);
         if (!string.IsNullOrWhiteSpace(rightPath)) await LoadSideAsync(false, rightPath!);
+        _goToFirstChange = true;
         await CompareAsync();
     }
 
@@ -471,6 +473,11 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             // Lines map differently now; start the next alignment from where the panes are.
             ForgetAlignment();
             UpdateVisuals();
+            if (_goToFirstChange)
+            {
+                _goToFirstChange = false;
+                GoToFirstChangeWhenReady();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -598,6 +605,18 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             ? _diff.NextBlockAfterLeftLine(line) ?? _diff.Blocks[0]
             : _diff.PreviousBlockBeforeLeftLine(line) ?? _diff.Blocks[^1];
         GoToBlock(block);
+    }
+
+    private void GoToFirstChangeWhenReady()
+    {
+        if (IsBinaryMode || _diff.Blocks.Count == 0) return;
+        var opened = _diff;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            // Anything that happened in the meantime - an edit, a reload - owns the view now.
+            if (_disposed || !ReferenceEquals(_diff, opened) || _diff.Blocks.Count == 0) return;
+            GoToBlock(_diff.Blocks[0]);
+        }));
     }
 
     private void GoToBlock(DiffBlock block)

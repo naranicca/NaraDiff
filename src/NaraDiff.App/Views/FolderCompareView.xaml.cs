@@ -140,6 +140,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         EmptyHint.Visibility = text.Length > 0 && empty ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private bool ReadyToCompare() => _versionControl
+        ? Directory.Exists(LeftPathBox.Text.Trim())
+        : Directory.Exists(LeftPathBox.Text.Trim()) && Directory.Exists(RightPathBox.Text.Trim());
+
     private string PendingHint()
     {
         var left = Directory.Exists(LeftPathBox.Text.Trim());
@@ -191,10 +195,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     {
         if (!string.IsNullOrWhiteSpace(leftPath)) LeftPathBox.Text = leftPath;
         if (!string.IsNullOrWhiteSpace(rightPath) && !_versionControl) RightPathBox.Text = rightPath;
-        var ready = _versionControl
-            ? Directory.Exists(LeftPathBox.Text)
-            : Directory.Exists(LeftPathBox.Text) && Directory.Exists(RightPathBox.Text);
-        if (ready) await CompareAsync();
+        if (ReadyToCompare()) await CompareAsync();
     }
 
     public void ApplySettings(AppSettings settings)
@@ -525,7 +526,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         if (Directory.Exists(target.Text)) dialog.InitialDirectory = target.Text;
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         target.Text = dialog.FolderName;
-        if (_versionControl) _ = CompareAsync();
+        if (ReadyToCompare()) _ = CompareAsync();
     }
 
     private static void SetFolderDropEffect(DragEventArgs e)
