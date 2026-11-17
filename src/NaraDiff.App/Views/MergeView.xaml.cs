@@ -30,6 +30,7 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     private MergedDocument? _document;
     private CancellationTokenSource? _work;
     private DiffTextEditor? _scrollLeader;
+    private DiffTextEditor? _lastFocusedEditor;
     private int _programmaticScrolls;
     private bool _realignPending;
     private bool _realignForced;
@@ -86,8 +87,9 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
             // ends any jump that was still being re-applied while word-wrapped lines got measured.
             editor.PreviewMouseWheel += (_, _) => TakeLead(pane);
             editor.PreviewMouseDown += (_, _) => TakeLead(pane);
+            editor.PanStarted += (_, _) => TakeLead(pane);
             editor.PreviewKeyDown += (_, _) => TakeLead(pane);
-            editor.GotKeyboardFocus += (_, _) => TakeLead(pane);
+            editor.GotKeyboardFocus += (_, _) => { _lastFocusedEditor = pane; TakeLead(pane); };
         }
         foreach (var target in new[] { MergePane.Left, MergePane.Base, MergePane.Right })
         {
@@ -474,9 +476,11 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     private int CurrentBaseLine()
     {
         if (_merge is null) return 0;
-        if (LeftEditor.TextArea.IsKeyboardFocusWithin) return (int)Math.Round(_merge.LeftDiff.MapRightToLeft(LeftEditor.CaretLineIndex));
-        if (RightEditor.TextArea.IsKeyboardFocusWithin) return (int)Math.Round(_merge.RightDiff.MapRightToLeft(RightEditor.CaretLineIndex));
-        if (ResultEditor.TextArea.IsKeyboardFocusWithin) return ResultLineToBase(ResultEditor.CaretLineIndex);
+        var editor = new[] { LeftEditor, RightEditor, ResultEditor, BaseEditor }.FirstOrDefault(pane => pane.TextArea.IsKeyboardFocusWithin)
+            ?? _lastFocusedEditor ?? BaseEditor;
+        if (ReferenceEquals(editor, LeftEditor)) return (int)Math.Round(_merge.LeftDiff.MapRightToLeft(LeftEditor.CaretLineIndex));
+        if (ReferenceEquals(editor, RightEditor)) return (int)Math.Round(_merge.RightDiff.MapRightToLeft(RightEditor.CaretLineIndex));
+        if (ReferenceEquals(editor, ResultEditor)) return ResultLineToBase(ResultEditor.CaretLineIndex);
         return BaseEditor.CaretLineIndex;
     }
 
@@ -556,8 +560,14 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
     {
         BeginProgrammaticScroll();
         BaseEditor.MoveCaretToLine(region.BaseStart);
+        LeftEditor.MoveCaretToLine(region.LeftStart);
+        RightEditor.MoveCaretToLine(region.RightStart);
         Navigate(new MergeNavigation(region.BaseStart, region.LeftStart, region.RightStart));
-        if (_document is not null && _document.RegionRanges.TryGetValue(region.Index, out var range)) ResultEditor.ScrollToLineIndex(range.Start);
+        if (_document is not null && _document.RegionRanges.TryGetValue(region.Index, out var range))
+        {
+            ResultEditor.MoveCaretToLine(range.Start);
+            ResultEditor.ScrollToLineIndex(range.Start);
+        }
         RefreshConnectors();
         UpdateFooter();
     }

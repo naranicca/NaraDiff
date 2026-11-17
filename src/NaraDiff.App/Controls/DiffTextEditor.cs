@@ -131,35 +131,15 @@ public sealed class DiffTextEditor : TextEditor
         // A pen press on the scroll bar itself (either orientation) must drag that scroll bar the
         // same way a mouse would, not be swallowed into panning the content underneath it.
         if (IsDescendantOfScrollBar(e.OriginalSource as DependencyObject)) return;
-        _stylusInertia.Stop();
         _panningStylus = e.StylusDevice;
-        _stylusPanStart = e.GetPosition(this);
-        _lastStylusPanPoint = _stylusPanStart;
-        _lastStylusPanTime = TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
-        _stylusVelocity = new Vector();
-        _stylusScrollStart = TextArea.TextView.ScrollOffset;
-        _isStylusPanning = false;
+        BeginPan(e.GetPosition(this));
     }
 
     private void OnStylusPanMove(object sender, StylusEventArgs e)
     {
         if (!ReferenceEquals(e.StylusDevice, _panningStylus)) return;
-        var delta = e.GetPosition(this) - _stylusPanStart;
-        if (!_isStylusPanning && delta.Length < 3) return;
-        _isStylusPanning = true;
+        if (!UpdatePan(e.GetPosition(this))) return;
         if (!IsStylusCaptured) CaptureStylus();
-        ScrollToVerticalOffset(Math.Max(0, _stylusScrollStart.Y - delta.Y));
-        ScrollToHorizontalOffset(Math.Max(0, _stylusScrollStart.X - delta.X));
-        var now = TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
-        var elapsedMilliseconds = (now - _lastStylusPanTime).TotalMilliseconds;
-        if (elapsedMilliseconds > 0)
-        {
-            var movement = e.GetPosition(this) - _lastStylusPanPoint;
-            var instantaneousVelocity = new Vector(-movement.X / elapsedMilliseconds, -movement.Y / elapsedMilliseconds);
-            _stylusVelocity = _stylusVelocity * 0.35 + instantaneousVelocity * 0.65;
-        }
-        _lastStylusPanPoint = e.GetPosition(this);
-        _lastStylusPanTime = now;
         e.Handled = true;
     }
 
@@ -167,21 +147,69 @@ public sealed class DiffTextEditor : TextEditor
     {
         if (!ReferenceEquals(e.StylusDevice, _panningStylus)) return;
         var wasPanning = _isStylusPanning;
-        var velocity = _stylusVelocity;
         EndStylusPan();
-        if (wasPanning)
-        {
-            _stylusInertia.Start(velocity);
-            e.Handled = true;
-        }
+        if (wasPanning) e.Handled = true;
     }
 
     private void EndStylusPan()
     {
         if (IsStylusCaptured) ReleaseStylusCapture();
         _panningStylus = null;
-        _isStylusPanning = false;
+        EndPan();
     }
+
+    /// <summary>
+    /// Starts a drag that pans this editor. Kept apart from the stylus events so the panning itself
+    /// carries no dependency on a device that only a real pen can raise.
+    /// </summary>
+    public void BeginPan(Point origin)
+    {
+        _stylusInertia.Stop();
+        _stylusPanStart = origin;
+        _lastStylusPanPoint = origin;
+        _lastStylusPanTime = PanClock();
+        _stylusVelocity = new Vector();
+        _stylusScrollStart = TextArea.TextView.ScrollOffset;
+        _isStylusPanning = false;
+        PanStarted?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Moves the drag on. False until it passes the threshold that tells a pan from a tap.</summary>
+    public bool UpdatePan(Point position)
+    {
+        var delta = position - _stylusPanStart;
+        if (!_isStylusPanning && delta.Length < 3) return false;
+        _isStylusPanning = true;
+        ScrollToVerticalOffset(Math.Max(0, _stylusScrollStart.Y - delta.Y));
+        ScrollToHorizontalOffset(Math.Max(0, _stylusScrollStart.X - delta.X));
+        var now = PanClock();
+        var elapsedMilliseconds = (now - _lastStylusPanTime).TotalMilliseconds;
+        if (elapsedMilliseconds > 0)
+        {
+            var movement = position - _lastStylusPanPoint;
+            var instantaneousVelocity = new Vector(-movement.X / elapsedMilliseconds, -movement.Y / elapsedMilliseconds);
+            _stylusVelocity = _stylusVelocity * 0.35 + instantaneousVelocity * 0.65;
+        }
+        _lastStylusPanPoint = position;
+        _lastStylusPanTime = now;
+        return true;
+    }
+
+    /// <summary>Ends the drag, letting a pan that was still moving coast to a stop.</summary>
+    public void EndPan()
+    {
+        var wasPanning = _isStylusPanning;
+        _isStylusPanning = false;
+        if (wasPanning) _stylusInertia.Start(_stylusVelocity);
+    }
+
+    private static TimeSpan PanClock() => TimeSpan.FromSeconds((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency);
+
+    /// <summary>
+    /// Raised when a pen starts dragging this editor. A pen reports stylus events only, so a view that
+    /// synchronises two editors cannot learn from the mouse events which pane the user is working in.
+    /// </summary>
+    public event EventHandler? PanStarted;
 
     /// <summary>Raised when the visible region changed and the connectors must be recalculated.</summary>
     public event EventHandler? ViewChanged;

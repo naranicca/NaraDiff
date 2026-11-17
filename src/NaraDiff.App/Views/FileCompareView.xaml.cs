@@ -36,6 +36,7 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     private byte[]? _leftBytes;
     private byte[]? _rightBytes;
     private DiffTextEditor? _scrollLeader;
+    private DiffTextEditor? _lastFocusedEditor;
     private int _programmaticScrolls;
     private bool _realignPending;
     private bool _realignForced;
@@ -92,8 +93,9 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             // ends any jump that was still being re-applied while word-wrapped lines got measured.
             editor.PreviewMouseWheel += (_, _) => TakeLead(pane);
             editor.PreviewMouseDown += (_, _) => TakeLead(pane);
+            editor.PanStarted += (_, _) => TakeLead(pane);
             editor.PreviewKeyDown += (_, _) => TakeLead(pane);
-            editor.GotKeyboardFocus += (_, _) => TakeLead(pane);
+            editor.GotKeyboardFocus += (_, _) => { _lastFocusedEditor = pane; TakeLead(pane); };
             editor.AllowDrop = true;
             editor.PreviewDragEnter += (_, e) => SetFileDropEffect(e);
             editor.PreviewDragOver += (_, e) => SetFileDropEffect(e);
@@ -153,7 +155,10 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     private bool IsBinaryMode => LeftEditor.IsBinaryContent || RightEditor.IsBinaryContent;
 
-    private DiffTextEditor ActiveEditor => RightEditor.TextArea.IsKeyboardFocusWithin ? RightEditor : LeftEditor;
+    private DiffTextEditor ActiveEditor =>
+        RightEditor.TextArea.IsKeyboardFocusWithin ? RightEditor
+        : LeftEditor.TextArea.IsKeyboardFocusWithin ? LeftEditor
+        : _lastFocusedEditor ?? LeftEditor;
 
     /// <summary>Loads both sides and runs the first comparison.</summary>
     public async Task OpenAsync(string? leftPath, string? rightPath)
@@ -624,7 +629,8 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         var leader = ActiveEditor;
         var leaderIsRight = ReferenceEquals(leader, RightEditor);
         BeginProgrammaticScroll();
-        leader.MoveCaretToLine(leaderIsRight ? block.RightStart : block.LeftStart);
+        LeftEditor.MoveCaretToLine(block.LeftStart);
+        RightEditor.MoveCaretToLine(block.RightStart);
         var navigation = new PaneNavigation(leader,
             leaderIsRight ? block.RightStart : block.LeftStart,
             leaderIsRight ? block.LeftStart : block.RightStart,

@@ -102,7 +102,7 @@ public sealed class DiffBackgroundRenderer : IBackgroundRenderer
                 var position = textView.GetVisualPosition(new TextViewPosition(documentLine.LineNumber, start - documentLine.Offset + 1), VisualYPosition.LineTop);
                 var scroll = textView.ScrollOffset;
                 drawingContext.DrawRoundedRectangle(decoration.InlineBrush, NoPen,
-                    new Rect(position.X - scroll.X - 1, position.Y, 3, textView.DefaultLineHeight), 1.5, 1.5);
+                    new Rect(position.X - scroll.X - 1, position.Y - scroll.Y, 3, textView.DefaultLineHeight), 1.5, 1.5);
                 continue;
             }
             if (end <= start) continue;
