@@ -40,6 +40,7 @@ public sealed class AppSettings
 
     public bool ShowWhitespace { get; set; }
 
+    public bool SyntaxColouring { get; set; } = true;
     public bool WordWrap { get; set; }
 
     public bool ShowConnectors { get; set; } = true;

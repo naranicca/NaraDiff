@@ -42,6 +42,7 @@ public partial class SettingsWindow : Window
         AccessibleBox.IsChecked = settings.ColorBlindPalette;
         LineNumbersBox.IsChecked = settings.ShowLineNumbers;
         WhitespaceBox.IsChecked = settings.ShowWhitespace;
+        SyntaxBox.IsChecked = settings.SyntaxColouring;
         WordWrapBox.IsChecked = settings.WordWrap;
         ConnectorsBox.IsChecked = settings.ShowConnectors;
         SyncScrollBox.IsChecked = settings.SynchronizeScrolling;
@@ -68,6 +69,7 @@ public partial class SettingsWindow : Window
         EditorFontSize = settings.EditorFontSize,
         ShowLineNumbers = settings.ShowLineNumbers,
         ShowWhitespace = settings.ShowWhitespace,
+        SyntaxColouring = settings.SyntaxColouring,
         WordWrap = settings.WordWrap,
         ShowConnectors = settings.ShowConnectors,
         SynchronizeScrolling = settings.SynchronizeScrolling
@@ -82,6 +84,7 @@ public partial class SettingsWindow : Window
         _settings.EditorFontSize = FontSizeBox.SelectedItem is int size ? size : 13;
         _settings.ShowLineNumbers = LineNumbersBox.IsChecked == true;
         _settings.ShowWhitespace = WhitespaceBox.IsChecked == true;
+        _settings.SyntaxColouring = SyntaxBox.IsChecked == true;
         _settings.WordWrap = WordWrapBox.IsChecked == true;
         _settings.ShowConnectors = ConnectorsBox.IsChecked == true;
         _settings.SynchronizeScrolling = SyncScrollBox.IsChecked == true;
@@ -108,6 +111,7 @@ public partial class SettingsWindow : Window
         _settings.EditorFontSize = _snapshot.EditorFontSize;
         _settings.ShowLineNumbers = _snapshot.ShowLineNumbers;
         _settings.ShowWhitespace = _snapshot.ShowWhitespace;
+        _settings.SyntaxColouring = _snapshot.SyntaxColouring;
         _settings.WordWrap = _snapshot.WordWrap;
         _settings.ShowConnectors = _snapshot.ShowConnectors;
         _settings.SynchronizeScrolling = _snapshot.SynchronizeScrolling;

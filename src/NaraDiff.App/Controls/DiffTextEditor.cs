@@ -30,6 +30,13 @@ public sealed class DiffTextEditor : TextEditor
     private Vector _stylusVelocity;
     private bool _isStylusPanning;
     private readonly InertialPan _stylusInertia;
+    private string? _filePath;
+    private bool _isBinaryContent;
+    private string? _languagePath;
+    private bool _syntaxColouringEnabled = true;
+    private ICSharpCode.AvalonEdit.Highlighting.IHighlightingDefinition? _syntaxDefinition;
+    private SyntaxPalette? _syntaxPalette;
+    private ThemedHighlightingColorizer? _colorizer;
 
     public DiffTextEditor()
     {
@@ -66,6 +73,7 @@ public sealed class DiffTextEditor : TextEditor
         };
         TextArea.TextView.ScrollOffsetChanged += (_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
         SizeChanged += (_, _) => ViewChanged?.Invoke(this, EventArgs.Empty);
+        TextChanged += (_, _) => UpdateSyntaxColouring();
         PreviewStylusDown += OnStylusPanDown;
         PreviewStylusMove += OnStylusPanMove;
         PreviewStylusUp += OnStylusPanUp;
@@ -217,13 +225,50 @@ public sealed class DiffTextEditor : TextEditor
     public event EventHandler? CaretLineChanged;
 
     /// <summary>Where the loaded content came from; used in the header and for saving.</summary>
-    public string? FilePath { get; set; }
+    public string? FilePath
+    {
+        get => _filePath;
+        set
+        {
+            _filePath = value;
+            UpdateSyntaxColouring();
+        }
+    }
 
     public EncodingChoice EncodingChoice { get; set; } = EncodingCatalog.Utf8;
 
     public LineEndingKind LineEnding { get; set; } = LineEndingKind.Lf;
 
-    public bool IsBinaryContent { get; set; }
+    public bool IsBinaryContent
+    {
+        get => _isBinaryContent;
+        set
+        {
+            _isBinaryContent = value;
+            UpdateSyntaxColouring();
+        }
+    }
+
+    public void UseLanguageOf(string? path)
+    {
+        _languagePath = path;
+        UpdateSyntaxColouring();
+    }
+
+    private void UpdateSyntaxColouring()
+    {
+        var wanted = _syntaxColouringEnabled && !_isBinaryContent && Document?.TextLength <= SyntaxCatalogue.MaximumCharacters
+            ? SyntaxCatalogue.ForFile(_languagePath ?? _filePath)
+            : null;
+        var palette = SyntaxPalette.Current;
+        if (ReferenceEquals(wanted, _syntaxDefinition) && ReferenceEquals(palette, _syntaxPalette)) return;
+        if (_colorizer is not null) TextArea.TextView.LineTransformers.Remove(_colorizer);
+        _colorizer = wanted is null ? null : new ThemedHighlightingColorizer(wanted, palette);
+        if (_colorizer is not null) TextArea.TextView.LineTransformers.Add(_colorizer);
+        _syntaxDefinition = wanted;
+        _syntaxPalette = palette;
+        TextArea.TextView.Redraw();
+    }
 
     public DiffDecorationSet Decorations
     {
@@ -271,6 +316,8 @@ public sealed class DiffTextEditor : TextEditor
         TextArea.SelectionForeground = null;
         TextArea.Caret.CaretBrush = ThemeService.Brush("EditorForeground");
         _renderer.CurrentLineBrush = ThemeService.Brush("EditorCurrentLine");
+        _syntaxColouringEnabled = settings.SyntaxColouring;
+        UpdateSyntaxColouring();
         Redraw();
     }
 

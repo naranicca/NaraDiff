@@ -329,7 +329,11 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         _settings.RememberFile(result.Path);
         _loading = false;
         if (pane == MergePane.Left && string.IsNullOrWhiteSpace(OutputPathBox.Text)) OutputPathBox.Text = result.Path;
-        if (pane == MergePane.Base) ResultEditor.EncodingChoice = result.Content.Encoding;
+        if (pane == MergePane.Base)
+        {
+            ResultEditor.EncodingChoice = result.Content.Encoding;
+            ResultEditor.UseLanguageOf(result.Path);
+        }
         TitleChanged?.Invoke(this, EventArgs.Empty);
         await MergeAsync();
     }

@@ -29,6 +29,7 @@
         </Grid>
         <CheckBox x:Name="LineNumbersBox" Content="Show line numbers" Margin="0,10,0,0" Click="Appearance_Changed"/>
         <CheckBox x:Name="WhitespaceBox" Content="Show spaces, tabs and line ends" Margin="0,8,0,0" Click="Appearance_Changed"/>
+        <CheckBox x:Name="SyntaxBox" Content="Colour the text by language" Margin="0,8,0,0" Click="Appearance_Changed"/>
         <CheckBox x:Name="WordWrapBox" Content="Wrap long lines" Margin="0,8,0,0" Click="Appearance_Changed"/>
         <CheckBox x:Name="ConnectorsBox" Content="Draw the curved change connectors" Margin="0,8,0,0" Click="Appearance_Changed"/>
         <CheckBox x:Name="SyncScrollBox" Content="Synchronise scrolling between panes" Margin="0,8,0,0" Click="Appearance_Changed"/>
