@@ -16,6 +16,9 @@
           <controls:IconButton x:Name="BrowseButton" Icon="{DynamicResource IconOpen}" ToolTip="Open a file (Ctrl+0)" Click="Browse_Click"/>
           <controls:IconButton x:Name="ReloadButton" Icon="{DynamicResource IconRefresh}" ToolTip="Reload from disk (F5)" Click="Reload_Click"/>
           <controls:IconButton x:Name="SaveButton" Icon="{DynamicResource IconSave}" ToolTip="Save this side (Ctrl+S)" Click="Save_Click"/>
+          <!-- Separates the Git action from the file actions; shown and hidden together with Stage. -->
+          <Border Style="{DynamicResource VerticalSeparator}" Height="20"
+                  Visibility="{Binding Visibility, ElementName=StageButton}"/>
           <controls:IconButton x:Name="StageButton" Icon="{DynamicResource IconStage}" Label="Stage" Visibility="Collapsed" Click="Stage_Click"
                                ToolTip="Stage this file in its Git repository (git add)"/>
         </StackPanel>

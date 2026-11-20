@@ -934,7 +934,6 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private void SetFooter(string text)
     {
-        FooterText.Text = text;
         StatusText = text;
         StatusChanged?.Invoke(this, EventArgs.Empty);
     }
