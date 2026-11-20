@@ -37,7 +37,30 @@ public partial class FilePaneHeader : UserControl
 
     public event EventHandler? SaveRequested;
 
+    public event EventHandler? StageRequested;
+
     public event EventHandler<string>? PathCommitted;
+
+    /// <summary>Shows the Stage button; only for a file of the Git repository a comparison was opened from.</summary>
+    public bool ShowStage
+    {
+        get => StageButton.Visibility == Visibility.Visible;
+        set => StageButton.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public bool CanStage
+    {
+        get => StageButton.IsEnabled;
+        set => StageButton.IsEnabled = value;
+    }
+
+    /// <summary>Enables or greys out Stage, with a tooltip that says why; the tooltip shows on the disabled button too.</summary>
+    public void SetStageState(bool enabled, string tooltip)
+    {
+        StageButton.IsEnabled = enabled;
+        StageButton.ToolTip = tooltip;
+        ToolTipService.SetShowOnDisabled(StageButton, true);
+    }
 
     public event EventHandler<EncodingChoice>? EncodingChanged;
 
@@ -106,6 +129,8 @@ public partial class FilePaneHeader : UserControl
     private void Reload_Click(object sender, RoutedEventArgs e) => ReloadRequested?.Invoke(this, EventArgs.Empty);
 
     private void Save_Click(object sender, RoutedEventArgs e) => SaveRequested?.Invoke(this, EventArgs.Empty);
+
+    private void Stage_Click(object sender, RoutedEventArgs e) => StageRequested?.Invoke(this, EventArgs.Empty);
 
     private void PathBox_KeyDown(object sender, KeyEventArgs e)
     {

@@ -15,11 +15,44 @@ using NaraDiff.Infrastructure.Logging;
 namespace NaraDiff.App.Views;
 
 /// <summary>A file pair to open, with the names its two sides go by when their paths do not say it.</summary>
-public sealed record FilePairRequest(string Left, string Right, string? LeftLabel = null, string? RightLabel = null);
+/// <param name="GitRoot">The repository the pair comes from in version-control mode, which lets the comparison stage the file.</param>
+public sealed record FilePairRequest(string Left, string Right, string? LeftLabel = null, string? RightLabel = null, string? GitRoot = null);
 
 /// <summary>One row of the folder comparison tree.</summary>
-public sealed class FolderRow
+public sealed class FolderRow : System.ComponentModel.INotifyPropertyChanged
 {
+    private bool _isExpanded = true;
+    private bool _isSelected;
+
+    /// <summary>
+    /// Bound two way to the tree item, so the expansion survives the tree being rebuilt (after a stage,
+    /// a filter change or a refresh) and is kept for rows whose container has been virtualised away.
+    /// </summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (_isExpanded == value) return;
+            _isExpanded = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsExpanded)));
+        }
+    }
+
+    /// <summary>Bound two way to the tree item, so the selection survives the tree being rebuilt.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
     public required FolderEntry Entry { get; init; }
 
     public required string Name { get; init; }
@@ -76,6 +109,12 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private FolderComparisonResult? _result;
     private CancellationTokenSource? _comparison;
     private GitWorktreeComparer? _gitComparison;
+    private GitRepository? _repository;
+    /// <summary>The revision shown on the left in version-control mode.</summary>
+    private string _revision = "HEAD";
+    private bool _gitBusy;
+    /// <summary>The <c>git status</c> of the working tree against HEAD, read with every refresh.</summary>
+    private IReadOnlyList<GitStatusEntry> _gitStatus = [];
     private readonly bool _versionControl;
     private bool _suppressEvents;
     private bool _disposed;
@@ -163,6 +202,125 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         RightBrowseButton.Visibility = Visibility.Collapsed;
         RightPathColumn.Width = new GridLength(0);
         CompareActions.Visibility = Visibility.Collapsed;
+        FolderOptionsBar.Visibility = Visibility.Collapsed;
+        GitBar.Visibility = Visibility.Visible;
+        LeftSizeHeader.Text = "Base size";
+        LeftModifiedHeader.Text = "Base modified";
+        RightSizeHeader.Text = "Working size";
+        RightModifiedHeader.Text = "Working modified";
+        Tree.ContextMenu = (ContextMenu)Resources["GitMenu"];
+        Tree.ContextMenuOpening += Tree_GitMenuOpening;
+        Tree.PreviewMouseRightButtonDown += Tree_PreviewMouseRightButtonDown;
+        UpdateGitButtons();
+    }
+
+    /// <summary>Right-clicking a row selects it first, so the menu acts on the row under the mouse.</summary>
+    private void Tree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var source = e.OriginalSource as DependencyObject;
+        while (source is not null and not TreeViewItem) source = source is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
+        if (source is TreeViewItem item)
+        {
+            item.IsSelected = true;
+            item.Focus();
+        }
+    }
+
+    private void Tree_GitMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (_repository is null || _gitBusy || _result is null)
+        {
+            e.Handled = true;
+            return;
+        }
+        var files = TargetFiles(out var wholeTree);
+        var status = StatusOf(files);
+        var target = wholeTree ? "all changes"
+            : Tree.SelectedItem is FolderRow { IsDirectory: true } folder ? $"“{folder.Name}/” ({files.Count:N0} files)"
+            : $"“{(Tree.SelectedItem as FolderRow)?.Name}”";
+        foreach (var item in Tree.ContextMenu!.Items.OfType<MenuItem>())
+        {
+            switch (item.Tag as string)
+            {
+                case "Open":
+                    item.IsEnabled = Tree.SelectedItem is FolderRow { IsDirectory: false };
+                    break;
+                case "Stage":
+                    item.Header = $"Stage {target}";
+                    item.IsEnabled = status.Any(entry => entry.HasUnstagedChanges);
+                    break;
+                case "Unstage":
+                    item.Header = $"Unstage {target}";
+                    item.IsEnabled = status.Any(entry => entry.IsStaged);
+                    break;
+                case "Commit":
+                    // With nothing selected the commit window ticks its default set, so no target is named.
+                    item.Header = wholeTree ? "Commit…" : $"Commit {target}…";
+                    item.IsEnabled = status.Count > 0;
+                    break;
+                case "Revert":
+                    item.Header = $"Revert {target}…";
+                    item.IsEnabled = files.Count > 0;
+                    break;
+            }
+        }
+    }
+
+    /// <summary>The <c>git status</c> entries behind the given tree files, matching renames by either name.</summary>
+    private List<GitStatusEntry> StatusOf(IEnumerable<FolderEntry> files)
+    {
+        var paths = files.Select(entry => entry.RelativePath).ToHashSet(StringComparer.Ordinal);
+        return _gitStatus.Where(entry => paths.Contains(entry.Path) || (entry.OriginalPath is not null && paths.Contains(entry.OriginalPath))).ToList();
+    }
+
+    private void OpenMenu_Click(object sender, RoutedEventArgs e) => OpenSelected();
+
+    /// <summary>Re-reads what is staged after another view changed the index of <paramref name="root"/>.</summary>
+    public async Task RefreshGitStatusAsync(string root)
+    {
+        if (_repository is null || _gitBusy || !string.Equals(_repository.Root, root, StringComparison.OrdinalIgnoreCase)) return;
+        try
+        {
+            _gitStatus = await _repository.StatusAsync();
+            RebuildTree();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("git-status", ex);
+        }
+    }
+
+    private async void GitStage_Click(object sender, RoutedEventArgs e) =>
+        await ChangeIndexAsync(stage: true);
+
+    private async void GitUnstage_Click(object sender, RoutedEventArgs e) =>
+        await ChangeIndexAsync(stage: false);
+
+    private async Task ChangeIndexAsync(bool stage)
+    {
+        if (_repository is null || _gitBusy) return;
+        var repository = _repository;
+        var status = StatusOf(TargetFiles(out _));
+        var count = status.Count(entry => stage ? entry.HasUnstagedChanges : entry.IsStaged);
+        if (count == 0) return;
+        SetGitBusy(true);
+        try
+        {
+            if (stage) await repository.StageAsync(status);
+            else await repository.UnstageAsync(status);
+            _gitStatus = await repository.StatusAsync();
+            RebuildTree();
+            SetFooter(stage ? $"Staged {count:N0} file(s)." : $"Unstaged {count:N0} file(s).");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(stage ? "git-stage" : "git-unstage", ex);
+            ShowGitError(stage ? "The files could not be staged." : "The files could not be unstaged.", ex);
+        }
+        finally
+        {
+            SetGitBusy(false);
+        }
     }
 
     public event EventHandler? TitleChanged;
@@ -326,36 +484,239 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private async Task CompareWorkingTreeAsync(string folder)
     {
+        if (_gitBusy) return;
         _gitComparison?.Dispose();
         _gitComparison = null;
         if (!Directory.Exists(folder))
         {
+            _repository = null;
+            UpdateGitButtons();
             Report("Select the folder of a Git repository.");
             return;
         }
         Report($"Reading the changes of {SafeName(folder)}...");
+        SetGitBusy(true);
         try
         {
-            _gitComparison = await GitWorktreeComparer.CreateAsync(folder, CancellationToken.None);
+            var repository = await GitRepository.OpenAsync(folder);
+            if (repository is null)
+            {
+                _repository = null;
+                _gitStatus = [];
+                _result = null;
+                Tree.ItemsSource = null;
+                Report($"{SafeName(folder)} is not a Git repository.");
+                return;
+            }
+            if (_repository is null || !string.Equals(_repository.Root, repository.Root, StringComparison.OrdinalIgnoreCase)) _revision = "HEAD";
+            _repository = repository;
+            await LoadRevisionsAsync();
+            _gitComparison = await GitWorktreeComparer.CreateAsync(repository, _revision, CancellationToken.None);
+            _gitStatus = await repository.StatusAsync();
         }
         catch (Exception ex)
         {
-            // Git may be missing from the machine, or the repository may be unreadable.
+            // Git may be missing from the machine, the repository may be unreadable, or the revision may be gone.
             _logger.Error("git-compare", ex);
             Report($"The changes of {SafeName(folder)} could not be read: {ex.Message}");
             return;
         }
-        if (_gitComparison is null)
+        finally
         {
-            Report($"{SafeName(folder)} is not a Git repository.");
-            return;
+            SetGitBusy(false);
         }
         _settings.RememberFolder(folder);
         _result = _gitComparison.Result;
         RebuildTree();
-        SetFooter("Git changes: HEAD — working tree");
+        SetFooter($"Git changes: {RevisionLabel()} — working tree. {StatusText}");
         TitleChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Fills the revision picker, keeping the current choice when it still exists.</summary>
+    private async Task LoadRevisionsAsync()
+    {
+        if (_repository is null) return;
+        var revisions = await _repository.ListRevisionsAsync(100);
+        _suppressEvents = true;
+        try
+        {
+            RevisionBox.ItemsSource = revisions;
+            var selected = revisions.FirstOrDefault(revision => revision.Revision == _revision);
+            if (selected is null)
+            {
+                _revision = "HEAD";
+                selected = revisions[0];
+            }
+            RevisionBox.SelectedItem = selected;
+        }
+        finally
+        {
+            _suppressEvents = false;
+        }
+    }
+
+    /// <summary>A short name for the left revision: a branch or tag name, or an abbreviated hash.</summary>
+    private string RevisionLabel()
+    {
+        foreach (var prefix in new[] { "refs/heads/", "refs/remotes/", "refs/tags/" })
+        {
+            if (_revision.StartsWith(prefix, StringComparison.Ordinal)) return _revision[prefix.Length..];
+        }
+        return _revision.Length == 40 ? _revision[..8] : _revision;
+    }
+
+    private void SetGitBusy(bool busy)
+    {
+        _gitBusy = busy;
+        Progress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        UpdateGitButtons();
+    }
+
+    private void UpdateGitButtons()
+    {
+        var ready = !_gitBusy && _repository is not null;
+        GitCommitButton.IsEnabled = ready;
+        PushButton.IsEnabled = ready;
+        RevertButton.IsEnabled = ready;
+        RevisionBox.IsEnabled = ready;
+    }
+
+    private async void Revision_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || RevisionBox.SelectedItem is not GitRevision revision || revision.Revision == _revision) return;
+        _revision = revision.Revision;
+        await CompareWorkingTreeAsync(LeftPathBox.Text.Trim());
+    }
+
+    /// <summary>The changed files of the selected tree row, or of the whole tree when nothing is selected.</summary>
+    private List<FolderEntry> TargetFiles(out bool wholeTree)
+    {
+        wholeTree = Tree.SelectedItem is not FolderRow;
+        var root = Tree.SelectedItem is FolderRow row ? row.Entry : _result?.Root;
+        if (root is null) return [];
+        var files = root.IsDirectory ? root.Descendants().Where(entry => !entry.IsDirectory).ToList() : [root];
+        return files.Where(entry => entry.HasDifference).ToList();
+    }
+
+    private async void GitCommit_Click(object sender, RoutedEventArgs e)
+    {
+        if (_repository is null || _gitBusy) return;
+        var repository = _repository;
+        IReadOnlyList<GitStatusEntry> changes;
+        string? branch;
+        try
+        {
+            changes = await repository.StatusAsync();
+            branch = await repository.CurrentBranchAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("git-status", ex);
+            SetFooter($"The changes could not be read: {ex.Message}");
+            return;
+        }
+        if (changes.Count == 0)
+        {
+            SetFooter("There is nothing to commit: the working tree matches HEAD.");
+            return;
+        }
+        // By default every change Git already tracks is ticked: modified, deleted and renamed files and
+        // everything staged. Untracked files are left unticked so stray files are not committed by accident.
+        // Commit from the context menu of a particular file or folder ticks just that target instead.
+        var fromMenuTarget = sender is MenuItem && Tree.SelectedItem is FolderRow;
+        var preselectedPaths = fromMenuTarget
+            ? StatusOf(TargetFiles(out _)).Select(entry => entry.Path).ToHashSet()
+            : changes.Where(entry => !entry.IsUntracked).Select(entry => entry.Path).ToHashSet();
+        var window = new CommitWindow(branch, changes, preselectedPaths, false) { Owner = Window.GetWindow(this) };
+        if (window.ShowDialog() != true) return;
+        var selected = window.SelectedChanges;
+        SetGitBusy(true);
+        try
+        {
+            SetFooter($"Committing {selected.Count:N0} file(s)...");
+            await repository.CommitAsync(selected, window.Message);
+            var summary = $"Committed {selected.Count:N0} file(s).";
+            if (window.PushAfterCommit)
+            {
+                SetFooter(summary + " Pushing...");
+                await repository.PushAsync();
+                summary += " Pushed.";
+            }
+            SetGitBusy(false);
+            await CompareWorkingTreeAsync(repository.Root);
+            SetFooter(summary);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("git-commit", ex);
+            SetGitBusy(false);
+            ShowGitError("The commit could not be completed.", ex);
+            await CompareWorkingTreeAsync(repository.Root);
+        }
+    }
+
+    private async void GitPush_Click(object sender, RoutedEventArgs e)
+    {
+        if (_repository is null || _gitBusy) return;
+        SetGitBusy(true);
+        SetFooter("Pushing...");
+        try
+        {
+            var output = await _repository.PushAsync();
+            var last = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
+            SetFooter(string.IsNullOrEmpty(last) ? "Pushed." : $"Pushed. {last}");
+            await LoadRevisionsAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("git-push", ex);
+            SetFooter("The push failed.");
+            ShowGitError("The push failed.", ex);
+        }
+        finally
+        {
+            SetGitBusy(false);
+        }
+    }
+
+    private async void GitRevert_Click(object sender, RoutedEventArgs e)
+    {
+        if (_repository is null || _gitBusy || _result is null) return;
+        var repository = _repository;
+        var files = TargetFiles(out var wholeTree);
+        if (files.Count == 0)
+        {
+            SetFooter("There are no changes to revert.");
+            return;
+        }
+        var restore = files.Where(entry => entry.Status != FolderEntryStatus.RightOnly).Select(entry => entry.RelativePath).ToList();
+        var remove = files.Where(entry => entry.Status == FolderEntryStatus.RightOnly).Select(entry => entry.RelativePath).ToList();
+        var listing = string.Join("\n", files.Take(12).Select(entry => $"  {entry.RelativePath}  ({StatusLabel(entry.Status)})"));
+        if (files.Count > 12) listing += $"\n  … and {files.Count - 12:N0} more";
+        var scope = wholeTree ? "all changes" : $"the changes of {files.Count:N0} file(s)";
+        var message = $"Revert {scope} to {RevisionLabel()}?\n\n{listing}\n\n" +
+                      (remove.Count > 0 ? $"{remove.Count:N0} file(s) that do not exist in {RevisionLabel()} will be moved to the Recycle Bin.\n" : string.Empty) +
+                      "Changes to the other files are discarded and cannot be undone.";
+        if (MessageBox.Show(Window.GetWindow(this), message, "Revert changes", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
+        SetGitBusy(true);
+        try
+        {
+            await repository.RevertAsync(_revision, restore, remove);
+            SetGitBusy(false);
+            await CompareWorkingTreeAsync(repository.Root);
+            SetFooter($"Reverted {files.Count:N0} file(s) to {RevisionLabel()}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("git-revert", ex);
+            SetGitBusy(false);
+            ShowGitError("The changes could not be reverted.", ex);
+            await CompareWorkingTreeAsync(repository.Root);
+        }
+    }
+
+    private void ShowGitError(string summary, Exception ex) =>
+        MessageBox.Show(Window.GetWindow(this), $"{summary}\n\n{ex.Message}", "NaraDiff", MessageBoxButton.OK, MessageBoxImage.Error);
 
     private async Task CompareAsync()
     {
@@ -414,11 +775,24 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         if (_result is null) return;
         var onlyDifferences = OnlyDifferencesBox.IsChecked == true;
         var rows = new List<FolderRow>();
-        var exclusions = new GlobMatcher(CurrentOptions().ExcludePatterns, CurrentOptions().CaseSensitiveNames);
+        // The folder options bar is hidden for a repository, so its exclusions must not hide changes there:
+        // Revert and Commit act on what the tree shows, and an invisible file would be acted on unseen.
+        var exclusions = _versionControl
+            ? new GlobMatcher([], true)
+            : new GlobMatcher(CurrentOptions().ExcludePatterns, CurrentOptions().CaseSensitiveNames);
         foreach (var child in _result.Root.Children)
         {
             var row = BuildRow(child, onlyDifferences, 0, exclusions);
             if (row is not null) rows.Add(row);
+        }
+        // Carry the folded folders and the selection over to the new rows by path.
+        var previous = Flatten(Tree.ItemsSource as IEnumerable<FolderRow> ?? []).ToList();
+        var collapsed = previous.Where(row => row.IsDirectory && !row.IsExpanded).Select(row => row.Entry.RelativePath).ToHashSet(StringComparer.Ordinal);
+        var selected = previous.FirstOrDefault(row => row.IsSelected)?.Entry.RelativePath;
+        foreach (var row in Flatten(rows))
+        {
+            if (collapsed.Contains(row.Entry.RelativePath)) row.IsExpanded = false;
+            if (selected is not null && row.Entry.RelativePath == selected) row.IsSelected = true;
         }
         Tree.ItemsSource = rows;
         ShowHint(rows.Count == 0
@@ -446,7 +820,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         {
             Entry = entry,
             Name = entry.Name,
-            StatusText = StatusLabel(entry.Status),
+            StatusText = StageSuffix(entry) is { Length: > 0 } stage ? $"{StatusLabel(entry.Status)}, {stage}" : StatusLabel(entry.Status),
             TypeText = entry.IsDirectory ? "folder" : entry.Extension.TrimStart('.'),
             IconGlyph = IconFor(entry),
             IsDirectory = entry.IsDirectory,
@@ -478,12 +852,20 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         };
     }
 
-    private static string StatusLabel(FolderEntryStatus status) => status switch
+    /// <summary>"staged" or "partly staged" for a file of a repository; empty otherwise.</summary>
+    private string StageSuffix(FolderEntry entry)
+    {
+        if (!_versionControl || entry.IsDirectory || _gitStatus.Count == 0) return string.Empty;
+        var status = _gitStatus.FirstOrDefault(item => item.Path == entry.RelativePath || item.OriginalPath == entry.RelativePath);
+        return status?.StageText ?? string.Empty;
+    }
+
+    private string StatusLabel(FolderEntryStatus status) => status switch
     {
         FolderEntryStatus.Same => "identical",
         FolderEntryStatus.Modified => "modified",
-        FolderEntryStatus.LeftOnly => "left only",
-        FolderEntryStatus.RightOnly => "right only",
+        FolderEntryStatus.LeftOnly => _versionControl ? "deleted" : "left only",
+        FolderEntryStatus.RightOnly => _versionControl ? "added" : "right only",
         FolderEntryStatus.TypeConflict => "type clash",
         _ => "error"
     };
@@ -567,21 +949,12 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private void Collapse_Click(object sender, RoutedEventArgs e) => SetExpansion(false);
 
+    /// <summary>Folds or unfolds every folder; the rows carry the state, so virtualised items follow too.</summary>
     private void SetExpansion(bool expanded)
     {
-        foreach (var item in Tree.Items)
+        foreach (var row in Flatten(Tree.ItemsSource as IEnumerable<FolderRow> ?? []))
         {
-            if (Tree.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem container) SetExpansionRecursive(container, expanded);
-        }
-    }
-
-    private static void SetExpansionRecursive(TreeViewItem item, bool expanded)
-    {
-        item.IsExpanded = expanded;
-        item.UpdateLayout();
-        foreach (var child in item.Items)
-        {
-            if (item.ItemContainerGenerator.ContainerFromItem(child) is TreeViewItem container) SetExpansionRecursive(container, expanded);
+            if (row.IsDirectory) row.IsExpanded = expanded;
         }
     }
 
@@ -620,7 +993,9 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         {
             if (parent.ItemContainerGenerator.ContainerFromItem(item) is not TreeViewItem container) continue;
             if (ReferenceEquals(item, row)) return container;
-            container.IsExpanded = true;
+            // Unfold only the folders on the way to the row; the others keep the state the user left them in.
+            if (item is not FolderRow folder || !Flatten(folder.Children).Contains(row)) continue;
+            folder.IsExpanded = true;
             container.UpdateLayout();
             var nested = FindContainer(container, row);
             if (nested is not null) return nested;
@@ -651,7 +1026,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var left = entry.Left?.FullPath ?? Path.Combine(_result.LeftPath, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         var right = entry.Right?.FullPath ?? Path.Combine(_result.RightPath, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar));
         FileComparisonRequested?.Invoke(this, _versionControl
-            ? new FilePairRequest(left, right, "HEAD", "working tree")
+            ? new FilePairRequest(left, right, RevisionLabel(), "working tree", _repository?.Root)
             : new FilePairRequest(left, right));
     }
 

@@ -1,58 +1,64 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Diagnostics;
 using System.IO.Compression;
+using System.Text;
 using NaraDiff.Core.Folders;
-using System.Reflection.Metadata.Ecma335;
 
 namespace NaraDiff.App.Services;
 
-/// <summary>Builds a folder-comparison tree for the changes between HEAD and a Git working tree.</summary>
+/// <summary>Builds a folder-comparison tree for the changes between a revision and a Git working tree.</summary>
 internal sealed class GitWorktreeComparer : IDisposable
 {
     private readonly string _snapshotDirectory;
     private bool _disposed;
 
-    private GitWorktreeComparer(string repositoryRoot, string snapshotDirectory, FolderComparisonResult result)
+    private GitWorktreeComparer(GitRepository repository, string revision, string snapshotDirectory, FolderComparisonResult result)
     {
-        RepositoryRoot = repositoryRoot;
+        Repository = repository;
+        Revision = revision;
         _snapshotDirectory = snapshotDirectory;
         Result = result;
     }
 
-    public string RepositoryRoot { get; }
+    public GitRepository Repository { get; }
+
+    /// <summary>The revision on the left side of the comparison.</summary>
+    public string Revision { get; }
+
     public FolderComparisonResult Result { get; }
 
-    public static async Task<GitWorktreeComparer?> CreateAsync(string folder, CancellationToken cancellationToken)
+    /// <summary>
+    /// Extracts <paramref name="revision"/> into a temporary folder and lists every path whose
+    /// working-tree copy differs from it, including untracked files.
+    /// </summary>
+    public static async Task<GitWorktreeComparer> CreateAsync(GitRepository repository, string revision, CancellationToken cancellationToken)
     {
-        string root;
-        try
-        {
-            root = (await RunGitAsync(folder, "rev-parse", "--show-toplevel", cancellationToken)).Trim();
-        }
-        catch (InvalidOperationException)
-        {
-            return null;
-        }
-        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return null;
-        root = Path.GetFullPath(root);
+        var root = repository.Root;
         var snapshot = Path.Combine(Path.GetTempPath(), "NaraDiff", "git", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(snapshot);
-        var archive = Path.Combine(snapshot, "head.zip");
         try
         {
-            await RunGitAsync(root, "archive", "--format=zip", "--output=" + archive, "HEAD", cancellationToken);
-            ZipFile.ExtractToDirectory(archive, snapshot, true);
-            File.Delete(archive);
-            var records = await RunGitBytesAsync(root, "status", "--porcelain=v1", "-z", "--untracked-files=all", cancellationToken);
+            List<(string Path, FolderEntryStatus Status)> changes;
+            if (await HasCommitAsync(repository, revision, cancellationToken))
+            {
+                var archive = Path.Combine(snapshot, "snapshot.zip");
+                await repository.RunAsync(["archive", "--format=zip", "--output=" + archive, revision], cancellationToken);
+                ZipFile.ExtractToDirectory(archive, snapshot, true);
+                File.Delete(archive);
+                // Refresh the cached file stats so files that were only touched are not reported as changed.
+                try { await repository.RunAsync(["update-index", "-q", "--refresh"], cancellationToken); } catch (GitException) { }
+                changes = ParseNameStatus(await repository.RunBytesAsync(["diff", "--no-renames", "--name-status", "-z", revision], cancellationToken));
+            }
+            else
+            {
+                // A repository without commits: everything that is tracked is new.
+                changes = ParseList(await repository.RunBytesAsync(["ls-files", "--cached", "-z"], cancellationToken))
+                    .Select(path => (path, FolderEntryStatus.RightOnly)).ToList();
+            }
+            changes.AddRange(ParseList(await repository.RunBytesAsync(["ls-files", "--others", "--exclude-standard", "-z"], cancellationToken))
+                .Select(path => (path, FolderEntryStatus.RightOnly)));
+
             var rootEntry = new FolderEntry { Name = Path.GetFileName(root.TrimEnd(Path.DirectorySeparatorChar)), RelativePath = string.Empty, IsDirectory = true };
-            var entries = ParseStatus(records);
-            foreach (var change in entries) AddEntry(rootEntry, change, snapshot, root);
+            foreach (var change in changes.DistinctBy(change => change.Path)) AddEntry(rootEntry, change, snapshot, root);
             RollUp(rootEntry);
             var all = rootEntry.Descendants().ToList();
             var statistics = new FolderComparisonStatistics
@@ -65,7 +71,7 @@ internal sealed class GitWorktreeComparer : IDisposable
                 RightOnly = all.Count(entry => !entry.IsDirectory && entry.Status == FolderEntryStatus.RightOnly),
                 Errors = all.Count(entry => entry.Status == FolderEntryStatus.Error)
             };
-            return new GitWorktreeComparer(root, snapshot, new FolderComparisonResult
+            return new GitWorktreeComparer(repository, revision, snapshot, new FolderComparisonResult
             {
                 LeftPath = snapshot,
                 RightPath = root,
@@ -81,24 +87,42 @@ internal sealed class GitWorktreeComparer : IDisposable
         }
     }
 
-    private static List<(string Path, FolderEntryStatus Status)> ParseStatus(byte[] bytes)
+    private static async Task<bool> HasCommitAsync(GitRepository repository, string revision, CancellationToken cancellationToken)
     {
-        var fields = System.Text.Encoding.UTF8.GetString(bytes).Split('\0');
-        var result = new List<(string, FolderEntryStatus)>();
-        for (var index = 0; index < fields.Length; index++)
+        try
         {
-            var record = fields[index];
-            if (record.Length < 4) continue;
-            var code = record[..2];
-            var path = record[3..];
-            if (code[0] is 'R' or 'C') index++; //consume the old namein a rename/copy record
-            var status = code == "??" || code[0] == 'A' ? FolderEntryStatus.RightOnly
-                : code[0] == 'D' || code[1] == 'D' ? FolderEntryStatus.LeftOnly
-                : FolderEntryStatus.Modified;
+            await repository.RunAsync(["rev-parse", "--verify", "--quiet", revision + "^{commit}"], cancellationToken);
+            return true;
+        }
+        catch (GitException) when (revision == "HEAD")
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Parses <c>git diff --name-status -z</c>: a status letter and a path per change.</summary>
+    private static List<(string Path, FolderEntryStatus Status)> ParseNameStatus(byte[] bytes)
+    {
+        var fields = Encoding.UTF8.GetString(bytes).Split('\0');
+        var result = new List<(string, FolderEntryStatus)>();
+        for (var index = 0; index + 1 < fields.Length; index += 2)
+        {
+            var code = fields[index];
+            var path = fields[index + 1];
+            if (code.Length == 0 || path.Length == 0) continue;
+            var status = code[0] switch
+            {
+                'A' => FolderEntryStatus.RightOnly,
+                'D' => FolderEntryStatus.LeftOnly,
+                _ => FolderEntryStatus.Modified
+            };
             result.Add((path.Replace('/', Path.DirectorySeparatorChar), status));
         }
         return result;
     }
+
+    private static IEnumerable<string> ParseList(byte[] bytes) =>
+        Encoding.UTF8.GetString(bytes).Split('\0', StringSplitOptions.RemoveEmptyEntries).Select(path => path.Replace('/', Path.DirectorySeparatorChar));
 
     private static void AddEntry(FolderEntry root, (string Path, FolderEntryStatus Status) change, string snapshot, string worktree)
     {
@@ -125,14 +149,6 @@ internal sealed class GitWorktreeComparer : IDisposable
         }
     }
 
-    private static string CreateEmptySide(string snapshot, string side, string relative)
-    {
-        var path = Path.Combine(snapshot, ".empty", side, relative);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        if (!File.Exists(path)) File.WriteAllBytes(path, []);
-        return path;
-    }
-
     private static FolderSideInfo? Describe(string path)
     {
         if (File.Exists(path))
@@ -149,31 +165,6 @@ internal sealed class GitWorktreeComparer : IDisposable
         if (entry.IsDirectory && entry.Children.Count > 0)
             entry.Status = entry.Children.Any(child => child.Status != FolderEntryStatus.Same) ? FolderEntryStatus.Modified : FolderEntryStatus.Same;
         return entry.Status;
-    }
-
-    private static async Task<string> RunGitAsync(string directory, params object[] args)
-    {
-        var cancellationToken = args[^1] is CancellationToken token ? token : default;
-        var arguments = args.Take(args.Length - 1).Cast<string>().ToArray();
-        var bytes = await RunGitBytesAsync(directory, arguments, cancellationToken);
-        return System.Text.Encoding.UTF8.GetString(bytes);
-    }
-
-    private static async Task<byte[]> RunGitBytesAsync(string directory, string first, string second, string third, string fourth, CancellationToken cancellationToken) =>
-        await RunGitBytesAsync(directory, new[] { first, second, third, fourth }, cancellationToken);
-
-    private static async Task<byte[]> RunGitBytesAsync(string directory, IEnumerable<string> arguments, CancellationToken cancellationToken)
-    {
-        using var process = new Process { StartInfo = new ProcessStartInfo("git") { WorkingDirectory = directory, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true } };
-        foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
-        try { process.Start(); }
-        catch (Win32Exception ex) { throw new InvalidOperationException("Git is not installed or is not available on PATH.", ex); }
-        using var output = new MemoryStream();
-        await process.StandardOutput.BaseStream.CopyToAsync(output, cancellationToken);
-        var error = await process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-        if (process.ExitCode != 0) throw new InvalidOperationException(string.IsNullOrWhiteSpace(error) ? "Git command failed." : error.Trim());
-        return output.ToArray();
     }
 
     public void Dispose()

@@ -40,6 +40,8 @@ public partial class MainWindow : Window
         Closing += MainWindow_Closing;
         SourceInitialized += (_, _) => WindowChrome.ApplyTheme(this, _settings.Theme);
         ThemeService.Changed += (_, _) => WindowChrome.ApplyTheme(this, _settings.Theme);
+        // Coming back from a terminal or another Git tool: the index may have changed there.
+        Activated += (_, _) => { if (ActiveView is FileCompareView fileView) _ = fileView.RefreshGitStageStateAsync(); };
     }
 
     private IComparisonView? ActiveView => (Tabs.SelectedItem as TabItem)?.Content as IComparisonView;
@@ -153,11 +155,21 @@ public partial class MainWindow : Window
         UpdateCommandState();
     }
 
-    private async Task NewFileCompareAsync(string? left, string? right, string? leftLabel = null, string? rightLabel = null)
+    private async Task NewFileCompareAsync(string? left, string? right, string? leftLabel = null, string? rightLabel = null, string? gitRoot = null)
     {
         var view = new FileCompareView(_settings, _logger);
         view.FolderComparisonRequested += async (_, pair) => await SwitchToFolderCompareAsync(view, pair.Left, pair.Right);
         if (leftLabel is not null || rightLabel is not null) view.SetPaneLabels(leftLabel, rightLabel);
+        if (gitRoot is not null)
+        {
+            view.EnableGitStaging(gitRoot);
+            // Keep the "staged" labels of every version-control tab on that repository current.
+            view.GitIndexChanged += async (_, root) =>
+            {
+                foreach (var folder in Tabs.Items.OfType<TabItem>().Select(tab => tab.Content).OfType<FolderCompareView>().ToList())
+                    await folder.RefreshGitStatusAsync(root);
+            };
+        }
         AddTab(view, view);
         await view.OpenAsync(left, right);
     }
@@ -175,7 +187,7 @@ public partial class MainWindow : Window
     private async Task NewFolderCompareAsync(string? left, string? right)
     {
         var view = new FolderCompareView(_settings, _logger);
-        view.FileComparisonRequested += async (_, pair) => await NewFileCompareAsync(pair.Left, pair.Right, pair.LeftLabel, pair.RightLabel);
+        view.FileComparisonRequested += async (_, pair) => await NewFileCompareAsync(pair.Left, pair.Right, pair.LeftLabel, pair.RightLabel, pair.GitRoot);
         AddTab(view, view);
         await view.OpenAsync(left, right);
     }
@@ -191,6 +203,8 @@ public partial class MainWindow : Window
     {
         if (!ReferenceEquals(e.OriginalSource, Tabs)) return;
         StatusText.Text = ActiveView?.StatusText ?? string.Empty;
+        // The index may have changed in another tab (staging from the version-control tree).
+        if (ActiveView is FileCompareView fileView) _ = fileView.RefreshGitStageStateAsync();
         UpdateCommandState();
     }
 
@@ -222,7 +236,7 @@ public partial class MainWindow : Window
     private async Task NewVersionControlAsync(string? folder)
     {
         var view = new FolderCompareView(_settings, _logger, versionControl: true);
-        view.FileComparisonRequested += async (_, pair) => await NewFileCompareAsync(pair.Left, pair.Right, pair.LeftLabel, pair.RightLabel);
+        view.FileComparisonRequested += async (_, pair) => await NewFileCompareAsync(pair.Left, pair.Right, pair.LeftLabel, pair.RightLabel, pair.GitRoot);
         AddTab(view, view);
         await view.OpenAsync(folder, null);
     }

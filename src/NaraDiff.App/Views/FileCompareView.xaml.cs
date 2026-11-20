@@ -67,6 +67,8 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         RightHeader.ReloadRequested += async (_, _) => await ReloadAsync(false);
         LeftHeader.SaveRequested += async (_, _) => await SaveSideAsync(true);
         RightHeader.SaveRequested += async (_, _) => await SaveSideAsync(false);
+        LeftHeader.StageRequested += async (_, _) => await StageSideAsync(true);
+        RightHeader.StageRequested += async (_, _) => await StageSideAsync(false);
         LeftHeader.PathCommitted += async (_, path) => await LoadSideAsync(true, path);
         RightHeader.PathCommitted += async (_, path) => await LoadSideAsync(false, path);
         LeftSettings.EncodingChanged += async (_, choice) => await ReinterpretAsync(true, choice);
@@ -117,6 +119,13 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
 
     private string? _leftLabel;
     private string? _rightLabel;
+    /// <summary>The repository this comparison was opened from in version-control mode; null otherwise.</summary>
+    private string? _gitRoot;
+    private GitRepository? _gitRepository;
+    /// <summary>The status of each side's file against HEAD, as last read; null when it has no changes or is not in the repository.</summary>
+    private GitStatusEntry? _leftGitStatus;
+    private GitStatusEntry? _rightGitStatus;
+    private int _gitStatusVersion;
     private bool _goToFirstChange;
 
     public string Title
@@ -416,6 +425,8 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         header.PathText = result.Path;
         UpdateWatcher();
         UpdateHeaders();
+        // Saving changes the file on disk, which is what Git compares with the index.
+        _ = RefreshGitStageStateAsync();
         TitleChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -478,6 +489,8 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
             // Lines map differently now; start the next alignment from where the panes are.
             ForgetAlignment();
             UpdateVisuals();
+            // Loads, reloads after an outside change and edits all end here; the file may have become stageable or not.
+            _ = RefreshGitStageStateAsync();
             if (_goToFirstChange)
             {
                 _goToFirstChange = false;
@@ -892,6 +905,118 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         RightSettings.SetState(Describe(RightEditor), RightEditor.IsReadOnly, RightEditor.IsModified);
         LeftHeader.CanSave = !LeftEditor.IsReadOnly;
         RightHeader.CanSave = !RightEditor.IsReadOnly;
+        // Stage goes on the side holding the working-tree file; the other side is a snapshot of a revision
+        // in a temporary folder. Checked on every update because the sides can be swapped or reloaded.
+        LeftHeader.ShowStage = GitRelativePath(LeftEditor) is not null;
+        RightHeader.ShowStage = GitRelativePath(RightEditor) is not null;
+        UpdateStageButton(LeftHeader, LeftEditor, _leftGitStatus);
+        UpdateStageButton(RightHeader, RightEditor, _rightGitStatus);
+    }
+
+    /// <summary>
+    /// Stage is available when the file on disk differs from the index, or when the editor has unsaved
+    /// edits (Stage offers to save them first). Otherwise it is greyed out with the reason as tooltip.
+    /// </summary>
+    private static void UpdateStageButton(FilePaneHeader header, DiffTextEditor editor, GitStatusEntry? status)
+    {
+        if (!header.ShowStage) return;
+        if (editor.IsModified)
+            header.SetStageState(true, "Save this file and stage it in its Git repository (git add)");
+        else if (status?.HasUnstagedChanges == true)
+            header.SetStageState(true, "Stage this file in its Git repository (git add)");
+        else if (status?.IsStaged == true)
+            header.SetStageState(false, "Nothing to stage: every change of this file is already staged");
+        else
+            header.SetStageState(false, "Nothing to stage: this file has no changes");
+    }
+
+    /// <summary>Re-reads the Git status of both sides' files and updates the Stage buttons.</summary>
+    public async Task RefreshGitStageStateAsync()
+    {
+        if (_gitRoot is null || _disposed) return;
+        var version = ++_gitStatusVersion;
+        var leftPath = GitRelativePath(LeftEditor);
+        var rightPath = GitRelativePath(RightEditor);
+        try
+        {
+            _gitRepository ??= await GitRepository.OpenAsync(_gitRoot);
+            if (_gitRepository is null) return;
+            var left = leftPath is null ? null : await _gitRepository.PathStatusAsync(leftPath);
+            var right = rightPath is null ? null : await _gitRepository.PathStatusAsync(rightPath);
+            // A later refresh started while this one ran; its answer is the current one.
+            if (version != _gitStatusVersion) return;
+            _leftGitStatus = left;
+            _rightGitStatus = right;
+            UpdateHeaders();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("git-status", ex);
+        }
+    }
+
+    /// <summary>
+    /// The repository-relative path of the editor's file when this comparison was opened from a Git
+    /// repository and the file lies inside it; null otherwise.
+    /// </summary>
+    private string? GitRelativePath(DiffTextEditor editor)
+    {
+        if (_gitRoot is null || string.IsNullOrEmpty(editor.FilePath)) return null;
+        var relative = System.IO.Path.GetRelativePath(_gitRoot, System.IO.Path.GetFullPath(editor.FilePath));
+        if (relative == "." || relative.StartsWith("..", StringComparison.Ordinal) || System.IO.Path.IsPathRooted(relative)) return null;
+        // Nothing in .git itself is a working-tree file.
+        if (relative.Equals(".git", StringComparison.OrdinalIgnoreCase) || relative.StartsWith(".git" + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return null;
+        return relative.Replace(System.IO.Path.DirectorySeparatorChar, '/');
+    }
+
+    /// <summary>Marks this comparison as coming from the Git repository at <paramref name="root"/>, which enables Stage.</summary>
+    public void EnableGitStaging(string root)
+    {
+        _gitRoot = System.IO.Path.GetFullPath(root);
+        _gitRepository = null;
+        UpdateHeaders();
+        _ = RefreshGitStageStateAsync();
+    }
+
+    /// <summary>Raised with the repository root after a file of it was staged, so other views can refresh.</summary>
+    public event EventHandler<string>? GitIndexChanged;
+
+    private async Task StageSideAsync(bool left)
+    {
+        var editor = left ? LeftEditor : RightEditor;
+        var header = left ? LeftHeader : RightHeader;
+        var relative = GitRelativePath(editor);
+        if (_gitRoot is null || relative is null) return;
+        var name = System.IO.Path.GetFileName(editor.FilePath);
+        if (editor.IsModified)
+        {
+            // Git stages what is on disk, so unsaved edits would silently be left out.
+            var answer = MessageBox.Show(Window.GetWindow(this), $"{name} has unsaved changes. Git stages the file as it is on disk.\n\nSave it first?",
+                "Stage", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel) return;
+            if (answer == MessageBoxResult.Yes && !await SaveSideAsync(left)) return;
+        }
+        header.CanStage = false;
+        try
+        {
+            var repository = _gitRepository ??= await GitRepository.OpenAsync(_gitRoot) ?? throw new GitException($"{_gitRoot} is no longer a Git repository.");
+            await repository.StagePathsAsync([relative]);
+            await RefreshGitStageStateAsync();
+            FooterText.Text = $"Staged {relative}.";
+            StatusText = FooterText.Text;
+            StatusChanged?.Invoke(this, EventArgs.Empty);
+            GitIndexChanged?.Invoke(this, repository.Root);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("git-stage", ex);
+            MessageBox.Show(Window.GetWindow(this), $"{name} could not be staged.\n\n{ex.Message}", "NaraDiff", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            // Back to what the file's status allows, not simply enabled.
+            UpdateHeaders();
+        }
     }
 
     private static string HeaderPath(DiffTextEditor editor, string? label)

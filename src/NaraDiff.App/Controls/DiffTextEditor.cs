@@ -360,22 +360,32 @@ public sealed class DiffTextEditor : TextEditor
 
     public double LineHeight => TextArea.TextView.DefaultLineHeight;
 
-    public int FirstVisibleLine
-    {
-        get
-        {
-            var height = TextArea.TextView.DefaultLineHeight;
-            return height <= 0 ? 0 : (int)(TextArea.TextView.ScrollOffset.Y / height);
-        }
-    }
+    /// <summary>
+    /// The zero based document line at the top of the viewport. Lines are looked up by their real
+    /// visual position, because with word wrap a long line is several rows tall and dividing the
+    /// scroll offset by the line height would run ahead of the document.
+    /// </summary>
+    public int FirstVisibleLine => DocumentLineAtVisualTop(TextArea.TextView.ScrollOffset.Y);
 
+    /// <summary>The number of document lines that are at least partly in the viewport.</summary>
     public int VisibleLineCount
     {
         get
         {
-            var height = TextArea.TextView.DefaultLineHeight;
-            return height <= 0 ? 1 : Math.Max(1, (int)(TextArea.TextView.ActualHeight / height));
+            var view = TextArea.TextView;
+            var last = DocumentLineAtVisualTop(view.ScrollOffset.Y + Math.Max(0, view.ActualHeight - 1));
+            return Math.Max(1, last - FirstVisibleLine + 1);
         }
+    }
+
+    private int DocumentLineAtVisualTop(double visualTop)
+    {
+        var document = Document;
+        if (document is null || document.LineCount == 0) return 0;
+        var view = TextArea.TextView;
+        var top = Math.Clamp(visualTop, 0, Math.Max(0, view.DocumentHeight - 1));
+        var line = view.GetDocumentLineByVisualTop(top);
+        return line is null ? 0 : line.LineNumber - 1;
     }
 
     public void ScrollToLineIndex(int lineIndex, bool center = true)
@@ -383,7 +393,7 @@ public sealed class DiffTextEditor : TextEditor
         var count = Math.Max(1, DocumentLineCount);
         var line = Math.Clamp(lineIndex + 1, 1, count);
         if (center) ScrollTo(line, 0);
-        else ScrollToVerticalOffset(Math.Max(0, (line - 1) * LineHeight));
+        else ScrollToVerticalOffset(Math.Max(0, TextArea.TextView.GetVisualTopByDocumentLine(line)));
     }
 
     public void MoveCaretToLine(int lineIndex)

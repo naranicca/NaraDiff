@@ -16,6 +16,8 @@
           <controls:IconButton x:Name="BrowseButton" Icon="{DynamicResource IconOpen}" ToolTip="Open a file (Ctrl+0)" Click="Browse_Click"/>
           <controls:IconButton x:Name="ReloadButton" Icon="{DynamicResource IconRefresh}" ToolTip="Reload from disk (F5)" Click="Reload_Click"/>
           <controls:IconButton x:Name="SaveButton" Icon="{DynamicResource IconSave}" ToolTip="Save this side (Ctrl+S)" Click="Save_Click"/>
+          <controls:IconButton x:Name="StageButton" Icon="{DynamicResource IconStage}" Label="Stage" Visibility="Collapsed" Click="Stage_Click"
+                               ToolTip="Stage this file in its Git repository (git add)"/>
         </StackPanel>
       </Grid>
       <StackPanel x:Name="SettingsRow" Grid.Row="1" Orientation="Horizontal" Visibility="Collapsed" Margin="0,6,0,0">

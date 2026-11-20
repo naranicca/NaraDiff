@@ -10,6 +10,26 @@
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
+    <!-- Attached to the tree only in version-control mode. Headers are filled in when the menu opens. -->
+    <ContextMenu x:Key="GitMenu">
+      <MenuItem Tag="Open" Header="Compare" InputGestureText="Enter" Click="OpenMenu_Click">
+        <MenuItem.Icon><Path Style="{StaticResource MenuIcon}" Data="{DynamicResource IconCompareFiles}"/></MenuItem.Icon>
+      </MenuItem>
+      <Separator/>
+      <MenuItem Tag="Stage" Header="Stage" Click="GitStage_Click">
+        <MenuItem.Icon><Path Style="{StaticResource MenuIcon}" Data="{DynamicResource IconStage}"/></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Tag="Unstage" Header="Unstage" Click="GitUnstage_Click">
+        <MenuItem.Icon><Path Style="{StaticResource MenuIcon}" Data="{DynamicResource IconUnstage}"/></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Tag="Commit" Header="Commit…" Click="GitCommit_Click">
+        <MenuItem.Icon><Path Style="{StaticResource MenuIcon}" Data="{DynamicResource IconCommit}"/></MenuItem.Icon>
+      </MenuItem>
+      <Separator/>
+      <MenuItem Tag="Revert" Header="Revert…" Click="GitRevert_Click">
+        <MenuItem.Icon><Path Style="{StaticResource MenuIcon}" Data="{DynamicResource IconRevert}"/></MenuItem.Icon>
+      </MenuItem>
+    </ContextMenu>
   </UserControl.Resources>
   <Grid>
     <Grid.RowDefinitions>
@@ -41,37 +61,55 @@
     </Border>
 
     <Border Grid.Row="1" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
-      <WrapPanel>
-        <TextBlock Text="Compare by" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="2,0,6,0"/>
-        <ComboBox x:Name="ContentModeBox" Width="210" SelectionChanged="Option_Changed"
-                  ToolTip="How file equality is decided"/>
-        <CheckBox x:Name="RecursiveBox" Content="Include subfolders" Margin="14,0,0,0" IsChecked="True" Click="Option_Changed"/>
-        <CheckBox x:Name="HiddenBox" Content="Include hidden files" Margin="14,0,0,0" Click="Option_Changed"/>
-        <CheckBox x:Name="CaseBox" Content="File names are case sensitive" Margin="14,0,0,0" Click="Option_Changed"/>
-        <CheckBox x:Name="OnlyDifferencesBox" Content="Only differences" Margin="14,0,0,0" Click="Filter_Changed"
-                  ToolTip="Hide entries that are identical on both sides"/>
-        <TextBlock Text="Exclude" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="14,0,6,0"/>
-        <TextBox x:Name="ExcludeBox" Width="230" Height="30" Padding="7,3,7,4" ToolTip="Semicolon separated glob patterns, for example bin/;obj/;*.log" KeyDown="Exclude_KeyDown"/>
-        <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
-        <controls:IconButton Icon="{DynamicResource IconExpand}" Label="Expand" Click="Expand_Click" ToolTip="Expand every folder"/>
-        <controls:IconButton Icon="{DynamicResource IconCollapse}" Label="Collapse" Click="Collapse_Click" ToolTip="Collapse every folder"/>
-        <controls:IconButton Icon="{DynamicResource IconSync}" Label="Synchronise" Click="Sync_Click" ToolTip="Preview and run a folder synchronisation"/>
-      </WrapPanel>
+      <Grid>
+        <!-- Version-control actions; shown instead of the folder options below when this view shows a Git repository. -->
+        <WrapPanel x:Name="GitBar" Visibility="Collapsed">
+          <TextBlock Text="Compare with" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="2,0,6,0"/>
+          <ComboBox x:Name="RevisionBox" Width="340" MaxDropDownHeight="420" SelectionChanged="Revision_Changed"
+                    ToolTip="The revision shown on the left; the working tree is always on the right"/>
+          <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+          <controls:IconButton x:Name="GitCommitButton" Icon="{DynamicResource IconCommit}" Label="Commit" Click="GitCommit_Click"
+                               ToolTip="Commit changes of the working tree; modified and staged files start ticked"/>
+          <controls:IconButton x:Name="PushButton" Icon="{DynamicResource IconPush}" Label="Push" Click="GitPush_Click"
+                               ToolTip="Push the current branch to its remote"/>
+          <controls:IconButton x:Name="RevertButton" Icon="{DynamicResource IconRevert}" Label="Revert" Click="GitRevert_Click"
+                               ToolTip="Discard the changes of the selected file or folder (or of everything when nothing is selected), restoring the revision on the left"/>
+          <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+          <controls:IconButton Icon="{DynamicResource IconExpand}" Label="Expand" Click="Expand_Click" ToolTip="Expand every folder"/>
+          <controls:IconButton Icon="{DynamicResource IconCollapse}" Label="Collapse" Click="Collapse_Click" ToolTip="Collapse every folder"/>
+        </WrapPanel>
+        <WrapPanel x:Name="FolderOptionsBar">
+          <TextBlock Text="Compare by" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="2,0,6,0"/>
+          <ComboBox x:Name="ContentModeBox" Width="210" SelectionChanged="Option_Changed"
+                    ToolTip="How file equality is decided"/>
+          <CheckBox x:Name="RecursiveBox" Content="Include subfolders" Margin="14,0,0,0" IsChecked="True" Click="Option_Changed"/>
+          <CheckBox x:Name="HiddenBox" Content="Include hidden files" Margin="14,0,0,0" Click="Option_Changed"/>
+          <CheckBox x:Name="CaseBox" Content="File names are case sensitive" Margin="14,0,0,0" Click="Option_Changed"/>
+          <CheckBox x:Name="OnlyDifferencesBox" Content="Only differences" Margin="14,0,0,0" Click="Filter_Changed"
+                    ToolTip="Hide entries that are identical on both sides"/>
+          <TextBlock Text="Exclude" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="14,0,6,0"/>
+          <TextBox x:Name="ExcludeBox" Width="230" Height="30" Padding="7,3,7,4" ToolTip="Semicolon separated glob patterns, for example bin/;obj/;*.log" KeyDown="Exclude_KeyDown"/>
+          <Border Style="{DynamicResource VerticalSeparator}" Height="20"/>
+          <controls:IconButton Icon="{DynamicResource IconExpand}" Label="Expand" Click="Expand_Click" ToolTip="Expand every folder"/>
+          <controls:IconButton Icon="{DynamicResource IconCollapse}" Label="Collapse" Click="Collapse_Click" ToolTip="Collapse every folder"/>
+          <controls:IconButton Icon="{DynamicResource IconSync}" Label="Synchronise" Click="Sync_Click" ToolTip="Preview and run a folder synchronisation"/>
+        </WrapPanel>
+      </Grid>
     </Border>
 
     <Border Grid.Row="2" Background="{DynamicResource SurfaceRaised}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,4">
       <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="96"/><ColumnDefinition Width="90"/>
+          <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="140"/><ColumnDefinition Width="90"/>
           <ColumnDefinition Width="132"/><ColumnDefinition Width="90"/><ColumnDefinition Width="132"/>
         </Grid.ColumnDefinitions>
         <TextBlock Text="Name" Style="{StaticResource ColumnHeader}" Margin="41,0,0,0"/>
         <TextBlock Grid.Column="1" Text="Type" Style="{StaticResource ColumnHeader}"/>
         <TextBlock Grid.Column="2" Text="Status" Style="{StaticResource ColumnHeader}"/>
-        <TextBlock Grid.Column="3" Text="Left size" Style="{StaticResource ColumnHeader}" TextAlignment="Right"/>
-        <TextBlock Grid.Column="4" Text="Left modified" Style="{StaticResource ColumnHeader}" Margin="8,0,0,0"/>
-        <TextBlock Grid.Column="5" Text="Right size" Style="{StaticResource ColumnHeader}" TextAlignment="Right"/>
-        <TextBlock Grid.Column="6" Text="Right modified" Style="{StaticResource ColumnHeader}" Margin="8,0,0,0"/>
+        <TextBlock x:Name="LeftSizeHeader" Grid.Column="3" Text="Left size" Style="{StaticResource ColumnHeader}" TextAlignment="Right"/>
+        <TextBlock x:Name="LeftModifiedHeader" Grid.Column="4" Text="Left modified" Style="{StaticResource ColumnHeader}" Margin="8,0,0,0"/>
+        <TextBlock x:Name="RightSizeHeader" Grid.Column="5" Text="Right size" Style="{StaticResource ColumnHeader}" TextAlignment="Right"/>
+        <TextBlock x:Name="RightModifiedHeader" Grid.Column="6" Text="Right modified" Style="{StaticResource ColumnHeader}" Margin="8,0,0,0"/>
       </Grid>
     </Border>
 
@@ -80,6 +118,13 @@
                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                 MouseDoubleClick="Tree_MouseDoubleClick" KeyDown="Tree_KeyDown">
+        <TreeView.ItemContainerStyle>
+          <!-- The rows own their folded and selected state so that rebuilding the tree keeps it. -->
+          <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+          </Style>
+        </TreeView.ItemContainerStyle>
         <TreeView.ItemTemplate>
           <HierarchicalDataTemplate ItemsSource="{Binding Children}">
             <Grid MinHeight="19">
@@ -98,7 +143,7 @@
                 </Style>
               </Grid.Style>
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="96"/><ColumnDefinition Width="90"/>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="70"/><ColumnDefinition Width="140"/><ColumnDefinition Width="90"/>
                 <ColumnDefinition Width="132"/><ColumnDefinition Width="90"/><ColumnDefinition Width="132"/>
               </Grid.ColumnDefinitions>
               <StackPanel Orientation="Horizontal" Margin="{Binding Indent}">
