@@ -150,8 +150,26 @@
                 <ToggleButton Style="{DynamicResource TreeExpander}" Margin="0,0,4,0" Visibility="{Binding ExpanderVisibility}"
                               IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=TreeViewItem}, Mode=TwoWay}"/>
                 <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="15" Width="16" Margin="0,0,7,0"
-                           VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                <TextBlock Text="{Binding Name}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis"/>
+                           VerticalAlignment="Center" HorizontalAlignment="Center">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsDimmed}" Value="True"><Setter Property="Foreground" Value="{DynamicResource TextDisabled}"/></DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <!-- Untracked files of a repository are greyed out, as in Meld. -->
+                <TextBlock Text="{Binding Name}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsDimmed}" Value="True"><Setter Property="Foreground" Value="{DynamicResource TextDisabled}"/></DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
               </StackPanel>
               <TextBlock Grid.Column="1" Text="{Binding TypeText}" Foreground="{DynamicResource TextSecondary}"/>
               <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="{DynamicResource TextSecondary}"/>

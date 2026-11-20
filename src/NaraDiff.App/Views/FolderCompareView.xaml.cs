@@ -67,6 +67,9 @@ public sealed class FolderRow : System.ComponentModel.INotifyPropertyChanged
 
     public bool IsDirectory { get; init; }
 
+    /// <summary>Drawn in grey: an untracked file of a repository, or a folder holding only such files.</summary>
+    public bool IsDimmed { get; init; }
+
     public required Brush StatusFill { get; init; }
 
     public required Brush StatusStroke { get; init; }
@@ -115,6 +118,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private bool _gitBusy;
     /// <summary>The <c>git status</c> of the working tree against HEAD, read with every refresh.</summary>
     private IReadOnlyList<GitStatusEntry> _gitStatus = [];
+    /// <summary>Folders without any tracked file ("dir/"), as Git reports them; only these are greyed out.</summary>
+    private IReadOnlySet<string> _untrackedDirectories = new HashSet<string>();
+    /// <summary><see cref="_gitStatus"/> by path (both names of a rename), rebuilt with the tree.</summary>
+    private Dictionary<string, GitStatusEntry> _gitStatusByPath = new(StringComparer.Ordinal);
     private readonly bool _versionControl;
     private bool _suppressEvents;
     private bool _disposed;
@@ -275,13 +282,35 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private void OpenMenu_Click(object sender, RoutedEventArgs e) => OpenSelected();
 
+    private async Task ReadGitStatusAsync(GitRepository repository)
+    {
+        _gitStatus = await repository.StatusAsync();
+        _untrackedDirectories = await repository.UntrackedDirectoriesAsync();
+    }
+
+    /// <summary>
+    /// Whether a folder holds no tracked file. Git names only the outermost such folder, so the folder
+    /// itself or any folder above it being listed counts. A tracked folder whose only changes happen to
+    /// be untracked files (such as a project folder with new bin/ and obj/ folders) is not untracked.
+    /// </summary>
+    private bool IsUntrackedDirectory(FolderEntry entry)
+    {
+        if (!_versionControl || _untrackedDirectories.Count == 0) return false;
+        var path = entry.RelativePath.TrimEnd('/') + "/";
+        for (var end = path.IndexOf('/'); end >= 0; end = path.IndexOf('/', end + 1))
+        {
+            if (_untrackedDirectories.Contains(path[..(end + 1)])) return true;
+        }
+        return false;
+    }
+
     /// <summary>Re-reads what is staged after another view changed the index of <paramref name="root"/>.</summary>
     public async Task RefreshGitStatusAsync(string root)
     {
         if (_repository is null || _gitBusy || !string.Equals(_repository.Root, root, StringComparison.OrdinalIgnoreCase)) return;
         try
         {
-            _gitStatus = await _repository.StatusAsync();
+            await ReadGitStatusAsync(_repository);
             RebuildTree();
         }
         catch (Exception ex)
@@ -308,7 +337,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         {
             if (stage) await repository.StageAsync(status);
             else await repository.UnstageAsync(status);
-            _gitStatus = await repository.StatusAsync();
+            await ReadGitStatusAsync(repository);
             RebuildTree();
             SetFooter(stage ? $"Staged {count:N0} file(s)." : $"Unstaged {count:N0} file(s).");
         }
@@ -503,6 +532,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             {
                 _repository = null;
                 _gitStatus = [];
+                _untrackedDirectories = new HashSet<string>();
                 _result = null;
                 Tree.ItemsSource = null;
                 Report($"{SafeName(folder)} is not a Git repository.");
@@ -512,7 +542,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             _repository = repository;
             await LoadRevisionsAsync();
             _gitComparison = await GitWorktreeComparer.CreateAsync(repository, _revision, CancellationToken.None);
-            _gitStatus = await repository.StatusAsync();
+            await ReadGitStatusAsync(repository);
         }
         catch (Exception ex)
         {
@@ -775,6 +805,12 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         if (_result is null) return;
         var onlyDifferences = OnlyDifferencesBox.IsChecked == true;
         var rows = new List<FolderRow>();
+        _gitStatusByPath = new Dictionary<string, GitStatusEntry>(StringComparer.Ordinal);
+        foreach (var status in _gitStatus)
+        {
+            _gitStatusByPath.TryAdd(status.Path, status);
+            if (status.OriginalPath is not null) _gitStatusByPath.TryAdd(status.OriginalPath, status);
+        }
         // The folder options bar is hidden for a repository, so its exclusions must not hide changes there:
         // Revert and Commit act on what the tree shows, and an invisible file would be acted on unseen.
         var exclusions = _versionControl
@@ -816,16 +852,25 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         if ((onlyDifferences && !entry.HasDifference && children.Count == 0) ||
             (entry.IsDirectory && entry.Children.Count > 0 && children.Count == 0)) return null;
         var palette = ThemeService.Palette;
+        // Untracked files are not part of the repository yet, so like Meld they are greyed out instead of
+        // being coloured as added; staging one turns it into a green "added, staged" row.
+        var dimmed = entry.IsDirectory
+            ? IsUntrackedDirectory(entry)
+            : GitStatusFor(entry)?.IsUntracked == true;
+        var plain = dimmed || entry.Status == FolderEntryStatus.Same;
         var result = new FolderRow
         {
             Entry = entry,
             Name = entry.Name,
-            StatusText = StageSuffix(entry) is { Length: > 0 } stage ? $"{StatusLabel(entry.Status)}, {stage}" : StatusLabel(entry.Status),
+            StatusText = dimmed ? "untracked"
+                : StageSuffix(entry) is { Length: > 0 } stage ? $"{StatusLabel(entry.Status)}, {stage}"
+                : StatusLabel(entry.Status),
             TypeText = entry.IsDirectory ? "folder" : entry.Extension.TrimStart('.'),
             IconGlyph = IconFor(entry),
             IsDirectory = entry.IsDirectory,
-            StatusFill = entry.Status == FolderEntryStatus.Same ? Brushes.Transparent : palette.FillFor(entry.Status),
-            StatusStroke = entry.Status == FolderEntryStatus.Same ? ThemeService.Brush("TextDisabled") : palette.StrokeFor(entry.Status),
+            IsDimmed = dimmed,
+            StatusFill = plain ? Brushes.Transparent : palette.FillFor(entry.Status),
+            StatusStroke = plain ? ThemeService.Brush("TextDisabled") : palette.StrokeFor(entry.Status),
             Indent = new Thickness(depth * 16, 0, 0, 0),
             ExpanderVisibility = children.Count > 0 ? Visibility.Visible : Visibility.Hidden,
             LeftSize = entry.Left is null || entry.IsDirectory ? string.Empty : $"{entry.LeftLength:N0}",
@@ -855,10 +900,13 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     /// <summary>"staged" or "partly staged" for a file of a repository; empty otherwise.</summary>
     private string StageSuffix(FolderEntry entry)
     {
-        if (!_versionControl || entry.IsDirectory || _gitStatus.Count == 0) return string.Empty;
-        var status = _gitStatus.FirstOrDefault(item => item.Path == entry.RelativePath || item.OriginalPath == entry.RelativePath);
-        return status?.StageText ?? string.Empty;
+        if (entry.IsDirectory) return string.Empty;
+        return GitStatusFor(entry)?.StageText ?? string.Empty;
     }
+
+    /// <summary>The <c>git status</c> entry of a file of the repository; null outside version-control mode or when unchanged against HEAD.</summary>
+    private GitStatusEntry? GitStatusFor(FolderEntry entry) =>
+        _versionControl && _gitStatusByPath.TryGetValue(entry.RelativePath, out var status) ? status : null;
 
     private string StatusLabel(FolderEntryStatus status) => status switch
     {

@@ -145,6 +145,26 @@ internal sealed class GitRepository
         return result;
     }
 
+    /// <summary>
+    /// The folders that hold no tracked file at all, as Git itself decides: with untracked files listed
+    /// "normally", such a folder is reported once, as "dir/", instead of file by file. Each path ends
+    /// in a slash; folders inside a listed one are untracked too but are not listed separately.
+    /// </summary>
+    public async Task<IReadOnlySet<string>> UntrackedDirectoriesAsync(CancellationToken cancellationToken = default)
+    {
+        var bytes = await RunBytesAsync(["status", "--porcelain=v1", "-z", "--untracked-files=normal"], cancellationToken);
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        var fields = Encoding.UTF8.GetString(bytes).Split('\0');
+        for (var index = 0; index < fields.Length; index++)
+        {
+            var record = fields[index];
+            if (record.Length < 4) continue;
+            if (record[0] is 'R' or 'C') index++;
+            if (record.StartsWith("?? ", StringComparison.Ordinal) && record.EndsWith('/')) result.Add(record[3..]);
+        }
+        return result;
+    }
+
     /// <summary>The status of one repository-relative path, or null when it has no changes against HEAD.</summary>
     public async Task<GitStatusEntry?> PathStatusAsync(string path, CancellationToken cancellationToken = default)
     {
