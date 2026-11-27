@@ -239,7 +239,6 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         ThemeService.Changed -= OnThemeChanged;
         _debounce.Stop();
         _comparison?.Cancel();
-        _comparison?.Dispose();
         _watcher.Dispose();
     }
 
@@ -469,21 +468,29 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
     {
         if (_disposed) return;
         _comparison?.Cancel();
-        _comparison?.Dispose();
-        var source = new CancellationTokenSource();
-        _comparison = source;
+        _comparison = null;
         if (IsBinaryMode)
         {
+            BusyOverlay.Visibility = Visibility.Collapsed;
             ShowBinaryComparison();
             return;
         }
         var left = LeftEditor.GetLines();
         var right = RightEditor.GetLines();
         var heavy = left.Count + right.Count > 120_000;
-        if (heavy) ShowBusy(true, "Comparing large files...");
+        using var source = new CancellationTokenSource();
+        _comparison = source;
+        BusyOverlay.Visibility = heavy ? Visibility.Visible : Visibility.Collapsed;
         try
         {
-            var result = await DiffEngine.CompareAsync(left, right, _options, source.Token);
+            var comparison = DiffEngine.CompareAsync(left, right, _options, source.Token);
+            if (!heavy && !comparison.IsCompleted)
+            {
+                await Task.WhenAny(comparison, Task.Delay(300, source.Token));
+                if (!comparison.IsCompleted && !source.IsCancellationRequested)
+                    BusyOverlay.Visibility = Visibility.Visible;
+            }
+            var result = await comparison;
             if (source.IsCancellationRequested) return;
             _diff = result;
             // Lines map differently now; start the next alignment from where the panes are.
@@ -507,7 +514,11 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         }
         finally
         {
-            if (heavy) ShowBusy(false, string.Empty);
+            if (ReferenceEquals(_comparison, source))
+            {
+                BusyOverlay.Visibility = Visibility.Collapsed;
+                _comparison = null;
+            }
         }
     }
 
@@ -1052,12 +1063,6 @@ public partial class FileCompareView : UserControl, IComparisonView, IDisposable
         FooterText.Text = $"{position}  ·  {side} line {caret.CaretLineIndex + 1} of {Math.Max(1, caret.DocumentLineCount)}";
         FooterRightText.Text = $"{LeftEditor.EncodingChoice.DisplayName} {LineEndings.DisplayName(LeftEditor.LineEnding)}  ⇄  {RightEditor.EncodingChoice.DisplayName} {LineEndings.DisplayName(RightEditor.LineEnding)}  ·  {_options.Describe()}";
         StatusChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void ShowBusy(bool visible, string text)
-    {
-        BusyOverlay.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        if (visible) BusyText.Text = text;
     }
 
     private void ShowNotice(string text, string? actionLabel)

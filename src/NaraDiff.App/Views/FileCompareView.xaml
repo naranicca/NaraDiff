@@ -66,13 +66,8 @@
       <controls:DiffTextEditor x:Name="RightEditor" Grid.Column="2"/>
       <controls:ConnectorRibbon x:Name="Connector" Grid.Column="1" Grid.ColumnSpan="2" Panel.ZIndex="1" GutterWidth="100"/>
       <controls:OverviewRuler x:Name="Ruler" Grid.Column="3"/>
-      <Border x:Name="BusyOverlay" Grid.ColumnSpan="4" Visibility="Collapsed" Background="#40000000">
-        <Border Style="{DynamicResource Card}" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="20,14">
-          <StackPanel>
-            <TextBlock x:Name="BusyText" Text="Comparing..." HorizontalAlignment="Center"/>
-            <ProgressBar IsIndeterminate="True" Width="180" Margin="0,10,0,0"/>
-          </StackPanel>
-        </Border>
+      <Border x:Name="BusyOverlay" Grid.ColumnSpan="4" Panel.ZIndex="2" Visibility="Collapsed" IsHitTestVisible="False" Background="#40000000">
+        <controls:ComparisonBusyIndicator Message="Comparing files…" HorizontalAlignment="Center" VerticalAlignment="Center"/>
       </Border>
     </Grid>
 

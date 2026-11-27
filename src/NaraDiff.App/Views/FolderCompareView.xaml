@@ -61,10 +61,6 @@
 
     <Border Grid.Row="1" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
       <Grid>
-        <!-- Status messages go to the main window's status bar; only the busy indicator lives here. -->
-        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <ProgressBar x:Name="Progress" Grid.Column="1" Width="120" Height="6" Margin="10,0,2,0" IsIndeterminate="True"
-                     Visibility="Collapsed" VerticalAlignment="Center" ToolTip="Working..."/>
         <!-- Version-control actions; shown instead of the folder options below when this view shows a Git repository. -->
         <WrapPanel x:Name="GitBar" Visibility="Collapsed">
           <TextBlock Text="Compare with" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" Margin="2,0,6,0"/>
@@ -186,6 +182,7 @@
       </TreeView>
       <TextBlock x:Name="EmptyHint" Text="Select two folders and press Compare." HorizontalAlignment="Center" VerticalAlignment="Center"
                  Foreground="{DynamicResource TextSecondary}"/>
+      <controls:ComparisonBusyIndicator x:Name="BusyIndicator" Visibility="Collapsed"/>
     </Grid>
   </Grid>
 </UserControl>

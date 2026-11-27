@@ -89,6 +89,9 @@
       <controls:DiffTextEditor x:Name="ResultEditor" Grid.Row="1"/>
     </Grid>
 
+    <controls:ComparisonBusyIndicator x:Name="MergeBusy" Grid.Row="3" Grid.RowSpan="3"
+                                      Message="Merging files…" Visibility="Collapsed"/>
+
     <Border Grid.Row="6" Background="{DynamicResource SurfaceAlt}" BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0" Padding="10,5">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

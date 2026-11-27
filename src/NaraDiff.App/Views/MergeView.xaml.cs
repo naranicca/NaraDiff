@@ -235,7 +235,8 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         _disposed = true;
         ThemeService.Changed -= OnThemeChanged;
         _work?.Cancel();
-        _work?.Dispose();
+        _work = null;
+        MergeBusy.Visibility = Visibility.Collapsed;
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
@@ -359,12 +360,17 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         if (BaseEditor.Document is null || LeftEditor.Document is null || RightEditor.Document is null) return;
         if (string.IsNullOrEmpty(BaseEditor.FilePath) && string.IsNullOrEmpty(LeftEditor.FilePath) && string.IsNullOrEmpty(RightEditor.FilePath)) return;
         _work?.Cancel();
-        _work?.Dispose();
+        MergeBusy.Visibility = Visibility.Collapsed;
         var source = new CancellationTokenSource();
         _work = source;
         try
         {
-            var result = await ThreeWayMerger.MergeAsync(BaseEditor.GetLines(), LeftEditor.GetLines(), RightEditor.GetLines(), _options, source.Token);
+            var pending = ThreeWayMerger.MergeAsync(BaseEditor.GetLines(), LeftEditor.GetLines(), RightEditor.GetLines(), _options, source.Token);
+            await Task.WhenAny(pending, Task.Delay(300, source.Token));
+            if (!pending.IsCompleted && !source.IsCancellationRequested)
+                MergeBusy.Visibility = Visibility.Visible;
+
+            var result = await pending;
             if (source.IsCancellationRequested) return;
             _merge = result;
             ForgetAlignment();
@@ -378,7 +384,16 @@ public partial class MergeView : UserControl, IComparisonView, IDisposable
         catch (Exception ex)
         {
             _logger.Error("merge", ex);
-            SetNotice($"The merge failed: {ex.Message}");
+            if (!source.IsCancellationRequested) SetNotice($"The merge failed: {ex.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_work, source))
+            {
+                MergeBusy.Visibility = Visibility.Collapsed;
+                _work = null;
+            }
+            source.Dispose();
         }
     }
 

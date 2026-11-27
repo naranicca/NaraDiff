@@ -181,9 +181,17 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
 
     private void ShowHint(string text)
     {
-        var empty = Tree.ItemsSource is not IEnumerable<FolderRow> rows || !rows.Any();
         EmptyHint.Text = text;
-        EmptyHint.Visibility = text.Length > 0 && empty ? Visibility.Visible : Visibility.Collapsed;
+        var empty = Tree.ItemsSource is not IEnumerable<FolderRow> rows || !rows.Any();
+        EmptyHint.Visibility = BusyIndicator.Visibility != Visibility.Visible && text.Length > 0 && empty
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void SetBusyMessage(string? message)
+    {
+        BusyIndicator.Message = message ?? string.Empty;
+        BusyIndicator.Visibility = message is null ? Visibility.Collapsed : Visibility.Visible;
+        ShowHint(EmptyHint.Text);
     }
 
     private bool ReadyToCompare() => _versionControl
@@ -308,6 +316,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     public async Task RefreshGitStatusAsync(string root)
     {
         if (_repository is null || _gitBusy || !string.Equals(_repository.Root, root, StringComparison.OrdinalIgnoreCase)) return;
+        SetGitBusy("Reading Git status…");
         try
         {
             await ReadGitStatusAsync(_repository);
@@ -316,6 +325,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         catch (Exception ex)
         {
             _logger.Error("git-status", ex);
+        }
+        finally
+        {
+            SetGitBusy(null);
         }
     }
 
@@ -332,7 +345,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var status = StatusOf(TargetFiles(out _));
         var count = status.Count(entry => stage ? entry.HasUnstagedChanges : entry.IsStaged);
         if (count == 0) return;
-        SetGitBusy(true);
+        SetGitBusy(stage ? "Staging files…" : "Unstaging files…");
         try
         {
             if (stage) await repository.StageAsync(status);
@@ -348,7 +361,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         }
         finally
         {
-            SetGitBusy(false);
+            SetGitBusy(null);
         }
     }
 
@@ -426,7 +439,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _disposed = true;
         _stylusInertia.Stop();
         _comparison?.Cancel();
-        _comparison?.Dispose();
+        _comparison = null;
         _gitComparison?.Dispose();
     }
 
@@ -514,19 +527,21 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private async Task CompareWorkingTreeAsync(string folder)
     {
         if (_gitBusy) return;
-        _gitComparison?.Dispose();
+        var previous = _gitComparison;
         _gitComparison = null;
         if (!Directory.Exists(folder))
         {
+            previous?.Dispose();
             _repository = null;
             UpdateGitButtons();
             Report("Select the folder of a Git repository.");
             return;
         }
-        Report($"Reading the changes of {SafeName(folder)}...");
-        SetGitBusy(true);
+        SetGitBusy("Reading repository changes…");
+        SetFooter($"Reading the changes of {SafeName(folder)}...");
         try
         {
+            if (previous is not null) await Task.Run(previous.Dispose);
             var repository = await GitRepository.OpenAsync(folder);
             if (repository is null)
             {
@@ -541,8 +556,21 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             if (_repository is null || !string.Equals(_repository.Root, repository.Root, StringComparison.OrdinalIgnoreCase)) _revision = "HEAD";
             _repository = repository;
             await LoadRevisionsAsync();
-            _gitComparison = await GitWorktreeComparer.CreateAsync(repository, _revision, CancellationToken.None);
+            // Extracting the archive and reading file metadata can take time on a large repository.
+            var revision = _revision;
+            var snapshot = await Task.Run(() => GitWorktreeComparer.CreateAsync(repository, revision, CancellationToken.None));
+            if (_disposed)
+            {
+                await Task.Run(snapshot.Dispose);
+                return;
+            }
+            _gitComparison = snapshot;
             await ReadGitStatusAsync(repository);
+            _settings.RememberFolder(folder);
+            _result = _gitComparison.Result;
+            RebuildTree();
+            SetFooter($"Git changes: {RevisionLabel()} — working tree. {StatusText}");
+            TitleChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
@@ -553,13 +581,8 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         }
         finally
         {
-            SetGitBusy(false);
+            SetGitBusy(null);
         }
-        _settings.RememberFolder(folder);
-        _result = _gitComparison.Result;
-        RebuildTree();
-        SetFooter($"Git changes: {RevisionLabel()} — working tree. {StatusText}");
-        TitleChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Fills the revision picker, keeping the current choice when it still exists.</summary>
@@ -595,10 +618,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         return _revision.Length == 40 ? _revision[..8] : _revision;
     }
 
-    private void SetGitBusy(bool busy)
+    private void SetGitBusy(string? message)
     {
-        _gitBusy = busy;
-        Progress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        _gitBusy = message is not null;
+        SetBusyMessage(message);
         UpdateGitButtons();
     }
 
@@ -634,6 +657,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var repository = _repository;
         IReadOnlyList<GitStatusEntry> changes;
         string? branch;
+        SetGitBusy("Reading changes for commit…");
         try
         {
             changes = await repository.StatusAsync();
@@ -644,6 +668,10 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             _logger.Error("git-status", ex);
             SetFooter($"The changes could not be read: {ex.Message}");
             return;
+        }
+        finally
+        {
+            SetGitBusy(null);
         }
         if (changes.Count == 0)
         {
@@ -660,7 +688,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         var window = new CommitWindow(branch, changes, preselectedPaths, false) { Owner = Window.GetWindow(this) };
         if (window.ShowDialog() != true) return;
         var selected = window.SelectedChanges;
-        SetGitBusy(true);
+        SetGitBusy("Committing changes…");
         try
         {
             SetFooter($"Committing {selected.Count:N0} file(s)...");
@@ -668,18 +696,19 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
             var summary = $"Committed {selected.Count:N0} file(s).";
             if (window.PushAfterCommit)
             {
+                SetGitBusy("Pushing commits…");
                 SetFooter(summary + " Pushing...");
                 await repository.PushAsync();
                 summary += " Pushed.";
             }
-            SetGitBusy(false);
+            SetGitBusy(null);
             await CompareWorkingTreeAsync(repository.Root);
             SetFooter(summary);
         }
         catch (Exception ex)
         {
             _logger.Error("git-commit", ex);
-            SetGitBusy(false);
+            SetGitBusy(null);
             ShowGitError("The commit could not be completed.", ex);
             await CompareWorkingTreeAsync(repository.Root);
         }
@@ -688,7 +717,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
     private async void GitPush_Click(object sender, RoutedEventArgs e)
     {
         if (_repository is null || _gitBusy) return;
-        SetGitBusy(true);
+        SetGitBusy("Pushing commits…");
         SetFooter("Pushing...");
         try
         {
@@ -705,7 +734,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         }
         finally
         {
-            SetGitBusy(false);
+            SetGitBusy(null);
         }
     }
 
@@ -728,18 +757,18 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
                       (remove.Count > 0 ? $"{remove.Count:N0} file(s) that do not exist in {RevisionLabel()} will be moved to the Recycle Bin.\n" : string.Empty) +
                       "Changes to the other files are discarded and cannot be undone.";
         if (MessageBox.Show(Window.GetWindow(this), message, "Revert changes", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
-        SetGitBusy(true);
+        SetGitBusy("Reverting changes…");
         try
         {
             await repository.RevertAsync(_revision, restore, remove);
-            SetGitBusy(false);
+            SetGitBusy(null);
             await CompareWorkingTreeAsync(repository.Root);
             SetFooter($"Reverted {files.Count:N0} file(s) to {RevisionLabel()}.");
         }
         catch (Exception ex)
         {
             _logger.Error("git-revert", ex);
-            SetGitBusy(false);
+            SetGitBusy(null);
             ShowGitError("The changes could not be reverted.", ex);
             await CompareWorkingTreeAsync(repository.Root);
         }
@@ -765,8 +794,7 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _gitComparison?.Dispose();
         _gitComparison = null;
         _comparison?.Cancel();
-        _comparison?.Dispose();
-        var source = new CancellationTokenSource();
+        using var source = new CancellationTokenSource();
         _comparison = source;
         var options = CurrentOptions();
         _settings.FolderOptions = options;
@@ -774,29 +802,38 @@ public partial class FolderCompareView : UserControl, IComparisonView, IDisposab
         _settings.RememberFolder(right);
         CompareButton.IsEnabled = false;
         CancelButton.IsEnabled = true;
-        Progress.Visibility = Visibility.Visible;
-        Report($"Comparing {SafeName(left)} and {SafeName(right)}...");
-        var progress = new Progress<string>(path => SetFooter($"Scanning {path}"));
+        SetBusyMessage("Comparing folders…");
+        SetFooter($"Comparing {SafeName(left)} and {SafeName(right)}...");
+        var progress = new Progress<string>(path =>
+        {
+            if (_comparison == source) SetFooter($"Scanning {path}");
+        });
         try
         {
-            _result = await DirectoryComparer.CompareAsync(left, right, options, _diffOptions, progress, source.Token);
+            var result = await DirectoryComparer.CompareAsync(left, right, options, _diffOptions, progress, source.Token);
+            source.Token.ThrowIfCancellationRequested();
+            _result = result;
             RebuildTree();
             TitleChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)
         {
-            Report("The comparison was cancelled.");
+            if (_comparison == source) Report("The comparison was cancelled.");
         }
         catch (Exception ex)
         {
             _logger.Error("folder-compare", ex);
-            Report($"The folders could not be compared: {ex.Message}");
+            if (_comparison == source) Report($"The folders could not be compared: {ex.Message}");
         }
         finally
         {
-            CompareButton.IsEnabled = true;
-            CancelButton.IsEnabled = false;
-            Progress.Visibility = Visibility.Collapsed;
+            if (_comparison == source)
+            {
+                _comparison = null;
+                CompareButton.IsEnabled = true;
+                CancelButton.IsEnabled = false;
+                SetBusyMessage(null);
+            }
         }
     }
 
